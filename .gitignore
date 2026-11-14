@@ -1,0 +1,197 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+
+# Mac system files
+*.DS_Store
+
+# Windows system files
+*.Thumbs.db
+
+# Local env files
+*.local
+
+# Coverage directory
+coverage/
+
+# Parcel-bundler cache
+.cache/
+
+# SvelteKit build
+.svelte-kit/
+
+# Vite cache
+.vite/
+
+# Misc
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Editor directories and files
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*.bak
+*.tmp
+*.orig
+
+# VS Code settings
+.history/
+
+# npm package lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Test coverage
+coverage/
+
+# Next.js build output
+.next/
+
+# Storybook build output
+out/
+
+# JetBrains IDEs
+.idea/
+
+# MacOS Finder files
+.AppleDouble
+.LSOverride
+
+# Windows image file caches
+ehthumbs.db
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Miscellaneous
+*.tgz
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Temporary files
+~$*
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# npm logs
+npm-debug.log*
+
+# Yarn logs
+yarn-debug.log*
+yarn-error.log*
+
+# pnpm logs
+pnpm-debug.log*
+
+# Vite cache
+.vite/
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variables file
+.env
+
+# Mac system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Miscellaneous
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# Coverage directory
+coverage/
+
+# Parcel-bundler cache
+.cache/
+
+# SvelteKit build
+.svelte-kit/
+
+# Next.js build output
+.next/
+
+# Storybook build output
+out/
+
+# JetBrains IDEs
+.idea/
+
+# MacOS Finder files
+.AppleDouble
+.LSOverride
+
+# Windows image file caches
+ehthumbs.db
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Miscellaneous
+*.tgz
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Temporary files
+~$*
