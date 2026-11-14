@@ -21,7 +21,7 @@ function Bars({ items, format }) {
 }
 
 export default function Dashboard() {
-  const { wons, rates } = useStore();
+  const { wons, rateCard } = useStore();
 
   const stats = useMemo(() => {
     const latest = wons.map((w) => w.versions[w.versions.length - 1]);
@@ -35,16 +35,20 @@ export default function Dashboard() {
       value: wons.filter((w) => w.status === s).length,
     }));
 
-    // Cost per grade, using each version's own saved rates.
-    const gradeTotals = {};
+    // Cost per category, using each version's own saved reference values.
+    const categoryTotals = {};
     for (const v of latest) {
       const s = summarize(v.allocations, v.rateSnapshot, v.contingencyPct);
-      for (const [g, c] of Object.entries(s.byGrade)) gradeTotals[g] = (gradeTotals[g] || 0) + c;
+      for (const [category, cost] of Object.entries(s.byCategory))
+        categoryTotals[category] = (categoryTotals[category] || 0) + cost;
     }
-    const byGrade = rates.map((r) => ({ label: r.grade, value: gradeTotals[r.grade] || 0 }));
+    const byCategory = rateCard.roles.map((role) => ({
+      label: role.id,
+      value: categoryTotals[role.id] || 0,
+    }));
 
-    return { count: wons.length, total, approved, avg: wons.length ? total / wons.length : 0, byStatus, byGrade };
-  }, [wons, rates]);
+    return { count: wons.length, total, approved, avg: wons.length ? total / wons.length : 0, byStatus, byCategory };
+  }, [wons, rateCard]);
 
   return (
     <div>
@@ -80,8 +84,8 @@ export default function Dashboard() {
           <Bars items={stats.byStatus} format={(n) => n} />
         </div>
         <div className="card pad">
-          <h2>Cost by grade</h2>
-          <Bars items={stats.byGrade} format={inr} />
+          <h2>Cost by category</h2>
+          <Bars items={stats.byCategory} format={inr} />
         </div>
       </div>
     </div>

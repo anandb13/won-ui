@@ -1,28 +1,27 @@
-// SAMPLE DATA ONLY. Replace with your real grade-cost data (via the API later).
+// Sample work orders use the same reference data as live calculations.
 import { summarize } from "../lib/cost.js";
+import { REFERENCE_DATA } from "./reference.js";
 
-export const SEED_RATES = [
-  { grade: "G1", title: "Associate", rate: 60000, effectiveFrom: "2026-04-01" },
-  { grade: "G2", title: "Engineer", rate: 95000, effectiveFrom: "2026-04-01" },
-  { grade: "G3", title: "Senior Engineer", rate: 140000, effectiveFrom: "2026-04-01" },
-  { grade: "G4", title: "Lead", rate: 190000, effectiveFrom: "2026-04-01" },
-  { grade: "G5", title: "Architect", rate: 250000, effectiveFrom: "2026-04-01" },
-];
-
-const rateMap = Object.fromEntries(SEED_RATES.map((r) => [r.grade, r.rate]));
-
-function seedWon(id, number, title, client, status, contingencyPct, allocations, savedAt) {
-  const t = summarize(allocations, rateMap, contingencyPct);
+function seedWon(id, number, title, client, status, contingencyPct, allocations, savedAt, contractId) {
+  const t = summarize(allocations, REFERENCE_DATA, contingencyPct);
   return {
     id,
     number,
     title,
     client,
+    contractId,
     status,
     contingencyPct,
     createdAt: savedAt,
     versions: [
-      { v: 1, savedAt, total: t.total, allocations, rateSnapshot: rateMap, contingencyPct },
+      {
+        v: 1,
+        savedAt,
+        total: t.total,
+        allocations,
+        rateSnapshot: REFERENCE_DATA,
+        contingencyPct,
+      },
     ],
   };
 }
@@ -36,13 +35,14 @@ export const SEED_WONS = [
     "Approved",
     10,
     [
-      { id: "a1", role: "Project Manager", grade: "G4", count: 1, months: 6 },
-      { id: "a2", role: "Solution Architect", grade: "G5", count: 1, months: 3 },
-      { id: "a3", role: "Senior Engineer", grade: "G3", count: 2, months: 6 },
-      { id: "a4", role: "Engineer", grade: "G2", count: 3, months: 6 },
-      { id: "a5", role: "QA Engineer", grade: "G2", count: 1, months: 5 },
+      { id: "a1", role: "Project Manager", category: "CONS", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "a2", role: "Solution Architect", category: "CONS", country: "US", startMonth: "2026-07", count: 1, months: 3 },
+      { id: "a3", role: "Senior Engineer", category: "AST", country: "India", startMonth: "2026-07", count: 2, months: 6 },
+      { id: "a4", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 3, months: 6 },
+      { id: "a5", role: "QA Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 5 },
     ],
-    "2026-09-12T10:00:00.000Z"
+    "2026-09-12T10:00:00.000Z",
+    "B-2026-000001"
   ),
   seedWon(
     "w2",
@@ -52,12 +52,13 @@ export const SEED_WONS = [
     "Submitted",
     12,
     [
-      { id: "b1", role: "Project Manager", grade: "G4", count: 1, months: 9 },
-      { id: "b2", role: "Data Engineer", grade: "G3", count: 3, months: 9 },
-      { id: "b3", role: "Engineer", grade: "G2", count: 2, months: 9 },
-      { id: "b4", role: "Associate Engineer", grade: "G1", count: 2, months: 6 },
+      { id: "b1", role: "Project Manager", category: "CONS", country: "Canada", startMonth: "2026-07", count: 1, months: 9 },
+      { id: "b2", role: "Data Engineer", category: "ITA", country: "Canada", startMonth: "2026-07", count: 3, months: 9 },
+      { id: "b3", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 2, months: 9 },
+      { id: "b4", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 2, months: 6 },
     ],
-    "2026-10-03T09:30:00.000Z"
+    "2026-10-03T09:30:00.000Z",
+    "B-2026-000002"
   ),
   seedWon(
     "w3",
@@ -67,10 +68,11 @@ export const SEED_WONS = [
     "Draft",
     8,
     [
-      { id: "c1", role: "Lead Engineer", grade: "G4", count: 1, months: 4 },
-      { id: "c2", role: "Mobile Engineer", grade: "G3", count: 2, months: 4 },
-      { id: "c3", role: "Associate Engineer", grade: "G1", count: 1, months: 4 },
+      { id: "c1", role: "Lead Engineer", category: "ASC", country: "Brazil", startMonth: "2026-07", count: 1, months: 4 },
+      { id: "c2", role: "Mobile Engineer", category: "ITA", country: "Brazil", startMonth: "2026-07", count: 2, months: 4 },
+      { id: "c3", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 1, months: 4 },
     ],
-    "2026-11-05T14:15:00.000Z"
+    "2026-11-05T14:15:00.000Z",
+    "B-2026-000003"
   ),
 ];

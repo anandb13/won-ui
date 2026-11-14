@@ -1,18 +1,36 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { SEED_RATES, SEED_WONS } from "../data/mock.js";
+import { SEED_WONS } from "../data/mock.js";
+import { REFERENCE_DATA } from "../data/reference.js";
 import { summarize } from "./cost.js";
 
 // Temporary browser-side store. Each function here becomes an API call to FastAPI.
 const KEY = "won-ui-state-v1";
 
+function addSampleContractIds(wons) {
+  return wons.map((won) => {
+    const sample = SEED_WONS.find((seed) => seed.id === won.id);
+    return sample && !won.contractId ? { ...won, contractId: sample.contractId } : won;
+  });
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.rateCard) {
+        return {
+          ...saved,
+          rateCard: { ...REFERENCE_DATA, ...saved.rateCard },
+          wons: addSampleContractIds(saved.wons || SEED_WONS),
+        };
+      }
+      return { rateCard: REFERENCE_DATA, wons: addSampleContractIds(saved.wons || SEED_WONS) };
+    }
   } catch {
     /* ignore */
   }
-  return { rates: SEED_RATES, wons: SEED_WONS };
+  return { rateCard: REFERENCE_DATA, wons: SEED_WONS };
 }
 
 const Ctx = createContext(null);
@@ -38,38 +56,44 @@ export function StoreProvider({ children }) {
   }, [state]);
 
   const api = useMemo(() => {
-    const rateMap = Object.fromEntries(state.rates.map((r) => [r.grade, r.rate]));
     return {
-      rates: state.rates,
-      rateMap,
+      rateCard: state.rateCard,
+      rates: state.rateCard.roles,
       wons: state.wons,
 
-      setRate(grade, rate) {
+      setRate(category, country, rate) {
         setState((s) => ({
           ...s,
-          rates: s.rates.map((r) =>
-            r.grade === grade ? { ...r, rate: Number(rate) || 0 } : r
-          ),
+          rateCard: {
+            ...s.rateCard,
+            dailyRates: {
+              ...s.rateCard.dailyRates,
+              [category]: {
+                ...s.rateCard.dailyRates[category],
+                [country]: Number(rate) || 0,
+              },
+            },
+          },
         }));
       },
 
-      resetSampleData() {
-        setState({ rates: SEED_RATES, wons: SEED_WONS });
+      resetReferenceData() {
+        setState((s) => ({ ...s, rateCard: REFERENCE_DATA }));
       },
 
       // Saves a new WON, or adds a new immutable version to an existing one.
       // Each version keeps the rates it was priced with.
       saveWon(draft) {
         const now = new Date().toISOString();
-        const totals = summarize(draft.allocations, rateMap, draft.contingencyPct);
+        const totals = summarize(draft.allocations, state.rateCard, 0);
         const existing = state.wons.find((w) => w.id === draft.id);
         const version = {
           v: existing ? existing.versions.length + 1 : 1,
           savedAt: now,
           total: totals.total,
           allocations: JSON.parse(JSON.stringify(draft.allocations)),
-          rateSnapshot: rateMap,
-          contingencyPct: Number(draft.contingencyPct) || 0,
+          rateSnapshot: JSON.parse(JSON.stringify(state.rateCard)),
+          contingencyPct: 0,
         };
         if (existing) {
           setState((s) => ({
@@ -78,9 +102,12 @@ export function StoreProvider({ children }) {
               w.id === existing.id
                 ? {
                     ...w,
-                    title: draft.title,
-                    client: draft.client,
-                    status: draft.status,
+                    name: draft.name,
+                    title: draft.name,
+                    referenceWonNumber: draft.referenceWonNumber,
+                    contractId: draft.contractId,
+                    startMonth: draft.startMonth,
+                    endMonth: draft.endMonth,
                     contingencyPct: version.contingencyPct,
                     versions: [...w.versions, version],
                   }
@@ -93,8 +120,12 @@ export function StoreProvider({ children }) {
         const won = {
           id,
           number: nextNumber(state.wons),
-          title: draft.title,
-          client: draft.client,
+          name: draft.name,
+          title: draft.name,
+          referenceWonNumber: draft.referenceWonNumber,
+          contractId: draft.contractId,
+          startMonth: draft.startMonth,
+          endMonth: draft.endMonth,
           status: draft.status,
           contingencyPct: version.contingencyPct,
           createdAt: now,

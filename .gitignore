@@ -74,11 +74,7 @@ coverage/
 # VS Code settings
 .history/
 
-# npm package lock
-package-lock.json
 yarn.lock
-pnpm-lock.yaml
-
 # Test coverage
 coverage/
 

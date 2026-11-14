@@ -10,34 +10,61 @@ export const inr = (n) =>
 
 export const STATUSES = ["Draft", "Submitted", "Approved", "Closed"];
 
-export function lineCost(a, rateMap) {
-  return (
-    (rateMap[a.grade] || 0) * (Number(a.count) || 0) * (Number(a.months) || 0)
-  );
+const LEGACY_CATEGORIES = {
+  G1: "TRAINEE",
+  G2: "ASE",
+  G3: "ITA",
+  G4: "AST",
+  G5: "CONS",
+};
+
+export function categoryFor(allocation) {
+  return allocation.category || LEGACY_CATEGORIES[allocation.grade] || allocation.grade;
 }
 
-export function summarize(allocations, rateMap, contingencyPct = 0) {
-  const byGrade = {};
+export function lineCost(allocation, pricing) {
+  const count = Number(allocation.count) || 0;
+  const duration = Number(allocation.months) || 0;
+
+  if (!pricing.dailyRates || !pricing.calendar) {
+    return (pricing[allocation.grade] || 0) * count * duration;
+  }
+
+  const category = categoryFor(allocation);
+  const country = allocation.country || "India";
+  const startIndex = pricing.calendar.findIndex((month) => month.month === allocation.startMonth);
+  if (startIndex < 0) return 0;
+
+  let cost = 0;
+  for (let offset = 0; offset < duration; offset += 1) {
+    const month = pricing.calendar[startIndex + offset];
+    if (!month) break;
+    const fraction = Math.min(1, duration - offset);
+    const netWorkDays = month.workDays - (month.leaves[country] || 0);
+    cost += (pricing.dailyRates[category]?.[country] || 0) * netWorkDays * fraction * count;
+  }
+  return cost;
+}
+
+export function summarize(allocations, pricing, contingencyPct = 0) {
+  const byCategory = {};
   let subtotal = 0;
   let effort = 0; // person-months
-  for (const a of allocations) {
-    const c = lineCost(a, rateMap);
+  for (const allocation of allocations) {
+    const c = lineCost(allocation, pricing);
     subtotal += c;
-    byGrade[a.grade] = (byGrade[a.grade] || 0) + c;
-    effort += (Number(a.count) || 0) * (Number(a.months) || 0);
+    const category = categoryFor(allocation);
+    byCategory[category] = (byCategory[category] || 0) + c;
+    effort += (Number(allocation.count) || 0) * (Number(allocation.months) || 0);
   }
   const contingency = (subtotal * (Number(contingencyPct) || 0)) / 100;
-  return { subtotal, contingency, total: subtotal + contingency, byGrade, effort };
+  return { subtotal, contingency, total: subtotal + contingency, byCategory, effort };
 }
 
 // Validation rules kept as data so they can later come from the database.
-export const RULES = {
-  maxSeniorCostShare: 0.4, // G4 + G5 share of subtotal
-  seniorGrades: ["G4", "G5"],
-  maxContingencyPct: 20,
-};
+export const RULES = { maxContingencyPct: 20 };
 
-export function validate(allocations, rateMap, contingencyPct) {
+export function validate(allocations, pricing, contingencyPct) {
   const msgs = [];
   if (allocations.length === 0) {
     msgs.push({ level: "error", text: "Add at least one allocation." });
@@ -50,19 +77,16 @@ export function validate(allocations, rateMap, contingencyPct) {
       msgs.push({ level: "error", text: `Row ${i + 1}: headcount must be above 0.` });
     if (!(Number(a.months) > 0))
       msgs.push({ level: "error", text: `Row ${i + 1}: months must be above 0.` });
+    if (a.country === "India" && !a.workLocation)
+      msgs.push({ level: "error", text: `Row ${i + 1}: choose an Indian work location.` });
+    if (pricing.calendar && !pricing.calendar.some((month) => month.month === a.startMonth))
+      msgs.push({ level: "error", text: `Row ${i + 1}: choose a valid start month.` });
+    if (pricing.calendar) {
+      const startIndex = pricing.calendar.findIndex((month) => month.month === a.startMonth);
+      if (startIndex >= 0 && startIndex + Number(a.months) > pricing.calendar.length)
+        msgs.push({ level: "error", text: `Row ${i + 1}: duration extends beyond the available work calendar.` });
+    }
   });
-  const s = summarize(allocations, rateMap, contingencyPct);
-  if (s.subtotal > 0) {
-    const senior = RULES.seniorGrades.reduce((t, g) => t + (s.byGrade[g] || 0), 0);
-    const share = senior / s.subtotal;
-    if (share > RULES.maxSeniorCostShare)
-      msgs.push({
-        level: "warn",
-        text: `Senior grades (${RULES.seniorGrades.join(", ")}) are ${Math.round(
-          share * 100
-        )}% of cost; the limit is ${Math.round(RULES.maxSeniorCostShare * 100)}%.`,
-      });
-  }
   if (Number(contingencyPct) > RULES.maxContingencyPct)
     msgs.push({
       level: "warn",

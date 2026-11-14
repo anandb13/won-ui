@@ -29,7 +29,7 @@ export default function App() {
           ))}
         </nav>
         <p className="sidebar-note">
-          Prototype UI. Data is sample data stored in this browser only.
+          Workbook rates and work orders are stored in this browser only.
         </p>
       </aside>
       <main className="content">

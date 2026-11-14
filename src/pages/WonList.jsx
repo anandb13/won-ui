@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
-import { STATUSES, inr } from "../lib/cost.js";
+import { STATUSES } from "../lib/cost.js";
 
 export default function WonList() {
   const { wons } = useStore();
@@ -13,7 +13,8 @@ export default function WonList() {
     return wons.filter((w) => {
       if (status !== "All" && w.status !== status) return false;
       if (!term) return true;
-      return [w.number, w.title, w.client].some((s) => s.toLowerCase().includes(term));
+      return [w.contractId, w.name || w.title]
+        .some((value) => (value || "").toLowerCase().includes(term));
     });
   }, [wons, q, status]);
 
@@ -29,7 +30,7 @@ export default function WonList() {
       <div className="toolbar">
         <input
           className="input"
-          placeholder="Search number, title or client"
+          placeholder="Search Contract ID or WON name"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -45,35 +46,24 @@ export default function WonList() {
         <table>
           <thead>
             <tr>
-              <th>WON</th>
-              <th>Title</th>
-              <th>Client</th>
-              <th>Status</th>
-              <th className="num">Version</th>
-              <th className="num">Total</th>
+              <th className="num">#</th>
+              <th>Contract ID</th>
+              <th>WON name</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((w) => {
-              const last = w.versions[w.versions.length - 1];
-              return (
-                <tr key={w.id}>
-                  <td>
-                    <Link to={`/won/${w.id}`}>{w.number}</Link>
-                  </td>
-                  <td>{w.title}</td>
-                  <td>{w.client}</td>
-                  <td>
-                    <span className={`badge s-${w.status.toLowerCase()}`}>{w.status}</span>
-                  </td>
-                  <td className="num">v{last.v}</td>
-                  <td className="num">{inr(last.total)}</td>
-                </tr>
-              );
-            })}
+            {rows.map((w, index) => (
+              <tr key={w.id}>
+                <td className="num">{index + 1}</td>
+                <td>{w.contractId || "-"}</td>
+                <td>
+                  <Link to={`/won/${w.id}`}>{w.name || w.title}</Link>
+                </td>
+              </tr>
+            ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="empty">
+                <td colSpan={3} className="empty">
                   No work orders match.
                 </td>
               </tr>

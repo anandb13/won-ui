@@ -37,7 +37,8 @@ export default function AiAssist({ onApply }) {
             <thead>
               <tr>
                 <th>Role</th>
-                <th>Grade</th>
+                <th>Category</th>
+                <th>Country</th>
                 <th className="num">Count</th>
                 <th className="num">Months</th>
               </tr>
@@ -46,7 +47,8 @@ export default function AiAssist({ onApply }) {
               {suggestion.map((r) => (
                 <tr key={r.id}>
                   <td>{r.role}</td>
-                  <td>{r.grade}</td>
+                  <td>{r.category}</td>
+                  <td>{r.country}</td>
                   <td className="num">{r.count}</td>
                   <td className="num">{r.months}</td>
                 </tr>

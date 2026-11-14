@@ -1,17 +1,35 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
-import { STATUSES, inr, lineCost, summarize, validate } from "../lib/cost.js";
+import { categoryFor, inr, summarize, validate } from "../lib/cost.js";
+import { INDIA_WORK_LOCATIONS, monthLabel } from "../data/reference.js";
 import AiAssist from "../components/AiAssist.jsx";
 
 let rowSeq = 0;
-const blankRow = () => ({
+const blankRow = (startMonth = "2026-07", months = 1) => ({
   id: `r${Date.now()}_${rowSeq++}`,
   role: "",
-  grade: "G2",
+  category: "ASE",
+  country: "India",
+  workLocation: "",
+  startMonth,
   count: 1,
-  months: 1,
+  months,
 });
+
+function datesFromAllocations(allocations, calendar) {
+  const scheduled = allocations
+    .map((allocation) => {
+      const start = calendar.findIndex((month) => month.month === allocation.startMonth);
+      if (start < 0) return null;
+      return { start, end: start + Math.max(1, Math.ceil(Number(allocation.months) || 1)) - 1 };
+    })
+    .filter(Boolean);
+  if (!scheduled.length) return { startMonth: calendar[0].month, endMonth: calendar[0].month };
+  const start = Math.min(...scheduled.map((item) => item.start));
+  const end = Math.min(calendar.length - 1, Math.max(...scheduled.map((item) => item.end)));
+  return { startMonth: calendar[start].month, endMonth: calendar[end].month };
+}
 
 // Wrapper so the form fully resets when switching between WONs.
 export default function WonBuilder() {
@@ -20,41 +38,62 @@ export default function WonBuilder() {
 }
 
 function Builder({ id }) {
-  const { wons, rates, rateMap, saveWon } = useStore();
+  const { wons, rateCard, saveWon } = useStore();
   const navigate = useNavigate();
   const existing = id === "new" ? null : wons.find((w) => w.id === id);
+  const categories = rateCard.roles;
+  const savedAllocations = existing
+    ? JSON.parse(JSON.stringify(existing.versions[existing.versions.length - 1].allocations))
+    : null;
+  const initialDates = existing
+    ? {
+        ...datesFromAllocations(savedAllocations, rateCard.calendar),
+        startMonth: existing.startMonth || datesFromAllocations(savedAllocations, rateCard.calendar).startMonth,
+        endMonth: existing.endMonth || datesFromAllocations(savedAllocations, rateCard.calendar).endMonth,
+      }
+    : { startMonth: rateCard.calendar[0].month, endMonth: rateCard.calendar[0].month };
+  const initialDuration =
+    rateCard.calendar.findIndex((month) => month.month === initialDates.endMonth) -
+      rateCard.calendar.findIndex((month) => month.month === initialDates.startMonth) +
+    1;
 
   const [form, setForm] = useState(() =>
     existing
       ? {
           id: existing.id,
-          title: existing.title,
-          client: existing.client,
+          name: existing.name || existing.title || "",
+          referenceWonNumber: existing.referenceWonNumber || "",
+          contractId: existing.contractId || "",
+          ...initialDates,
           status: existing.status,
-          contingencyPct: existing.contingencyPct,
-          allocations: JSON.parse(
-            JSON.stringify(existing.versions[existing.versions.length - 1].allocations)
-          ),
+          allocations: savedAllocations.map((allocation) => ({
+            ...allocation,
+            category: categoryFor(allocation) || "ASE",
+            country: allocation.country || "India",
+            workLocation: allocation.workLocation || "",
+            startMonth: allocation.startMonth || initialDates.startMonth,
+          })),
         }
       : {
           id: null,
-          title: "",
-          client: "",
+          name: "",
+          referenceWonNumber: "",
+          contractId: "",
+          ...initialDates,
           status: "Draft",
-          contingencyPct: 10,
-          allocations: [blankRow()],
+          allocations: [blankRow(initialDates.startMonth, initialDuration)],
         }
   );
   const [notice, setNotice] = useState("");
   const [showErrors, setShowErrors] = useState(false);
 
   const totals = useMemo(
-    () => summarize(form.allocations, rateMap, form.contingencyPct),
-    [form.allocations, form.contingencyPct, rateMap]
+    () => summarize(form.allocations, rateCard, 0),
+    [form.allocations, rateCard]
   );
   const issues = useMemo(
-    () => validate(form.allocations, rateMap, form.contingencyPct),
-    [form.allocations, form.contingencyPct, rateMap]
+    () => validate(form.allocations, rateCard, 0),
+    [form.allocations, rateCard]
   );
 
   if (id !== "new" && !existing) {
@@ -74,13 +113,43 @@ function Builder({ id }) {
     set({
       allocations: form.allocations.map((a) => (a.id === rowId ? { ...a, ...patch } : a)),
     });
-  const addRow = () => set({ allocations: [...form.allocations, blankRow()] });
+  const addRow = () => {
+    const start = rateCard.calendar.findIndex((month) => month.month === form.startMonth);
+    const end = rateCard.calendar.findIndex((month) => month.month === form.endMonth);
+    set({ allocations: [...form.allocations, blankRow(form.startMonth, end - start + 1)] });
+  };
   const removeRow = (rowId) =>
     set({ allocations: form.allocations.filter((a) => a.id !== rowId) });
 
+  function setProjectMonth(field, value) {
+    let startMonth = field === "startMonth" ? value : form.startMonth;
+    let endMonth = field === "endMonth" ? value : form.endMonth;
+    let startIndex = rateCard.calendar.findIndex((month) => month.month === startMonth);
+    let endIndex = rateCard.calendar.findIndex((month) => month.month === endMonth);
+    if (startIndex > endIndex) {
+      if (field === "startMonth") {
+        endMonth = startMonth;
+        endIndex = startIndex;
+      } else {
+        startMonth = endMonth;
+        startIndex = endIndex;
+      }
+    }
+    const months = endIndex - startIndex + 1;
+    set({
+      startMonth,
+      endMonth,
+      allocations: form.allocations.map((allocation) => ({
+        ...allocation,
+        startMonth,
+        months,
+      })),
+    });
+  }
+
   function onSave() {
     const blocking = issues.filter((i) => i.level === "error");
-    if (!form.title.trim()) {
+    if (!form.name.trim()) {
       setShowErrors(true);
       return;
     }
@@ -91,13 +160,13 @@ function Builder({ id }) {
     const savedId = saveWon(form);
     setShowErrors(false);
     if (!existing) {
-      navigate(`/won/${savedId}`, { replace: true });
+      navigate("/won", { replace: true });
     } else {
       setNotice(`Saved as version ${existing.versions.length + 1}.`);
     }
   }
 
-  const maxGradeCost = Math.max(1, ...Object.values(totals.byGrade));
+  const maxCategoryCost = Math.max(1, ...Object.values(totals.byCategory));
   const hasErrors = issues.some((i) => i.level === "error");
 
   return (
@@ -118,64 +187,75 @@ function Builder({ id }) {
             Cancel
           </Link>
           <button className="btn primary" onClick={onSave}>
-            {existing ? "Save new version" : "Save WON"}
+            {existing ? "Save new version" : "Create"}
           </button>
         </div>
       </div>
 
       {notice && <div className="banner ok">{notice}</div>}
-      {showErrors && !form.title.trim() && <div className="banner error">Enter a title.</div>}
+      {showErrors && !form.name.trim() && <div className="banner error">Enter a WON name.</div>}
 
       <div className="builder">
         <div className="builder-main">
           <div className="card pad">
             <div className="form-grid">
               <label>
-                Title
+                WON name
                 <input
                   className="input"
-                  value={form.title}
-                  onChange={(e) => set({ title: e.target.value })}
-                  placeholder="Project or work title"
+                  value={form.name}
+                  onChange={(e) => set({ name: e.target.value })}
+                  placeholder="Work order name"
                 />
               </label>
               <label>
-                Client
+                Reference WON number
                 <input
                   className="input"
-                  value={form.client}
-                  onChange={(e) => set({ client: e.target.value })}
+                  value={form.referenceWonNumber}
+                  onChange={(e) => set({ referenceWonNumber: e.target.value })}
+                  placeholder="External reference"
                 />
               </label>
               <label>
-                Status
+                Contract ID
+                <input
+                  className="input"
+                  value={form.contractId}
+                  onChange={(e) => set({ contractId: e.target.value })}
+                  placeholder="Contract identifier"
+                />
+              </label>
+              <label>
+                Start month
                 <select
                   className="input"
-                  value={form.status}
-                  onChange={(e) => set({ status: e.target.value })}
+                  value={form.startMonth}
+                  onChange={(e) => setProjectMonth("startMonth", e.target.value)}
                 >
-                  {STATUSES.map((s) => (
-                    <option key={s}>{s}</option>
+                  {rateCard.calendar.map((month) => (
+                    <option key={month.month} value={month.month}>{monthLabel(month.month)}</option>
                   ))}
                 </select>
               </label>
               <label>
-                Contingency %
-                <input
+                End month
+                <select
                   className="input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={form.contingencyPct}
-                  onChange={(e) => set({ contingencyPct: e.target.value })}
-                />
+                  value={form.endMonth}
+                  onChange={(e) => setProjectMonth("endMonth", e.target.value)}
+                >
+                  {rateCard.calendar.map((month) => (
+                    <option key={month.month} value={month.month}>{monthLabel(month.month)}</option>
+                  ))}
+                </select>
               </label>
             </div>
           </div>
 
           <div className="card pad">
             <div className="page-head tight">
-              <h2>Grade allocation</h2>
+              <h2>Resource allocation</h2>
               <button className="btn" onClick={addRow}>
                 Add row
               </button>
@@ -185,10 +265,10 @@ function Builder({ id }) {
                 <thead>
                   <tr>
                     <th>Role</th>
-                    <th>Grade</th>
+                    <th>Category</th>
+                    <th>Country</th>
+                    <th>Work location</th>
                     <th className="num">Headcount</th>
-                    <th className="num">Months</th>
-                    <th className="num">Cost</th>
                     <th />
                   </tr>
                 </thead>
@@ -206,15 +286,41 @@ function Builder({ id }) {
                       <td>
                         <select
                           className="input"
-                          value={a.grade}
-                          onChange={(e) => setRow(a.id, { grade: e.target.value })}
+                          value={a.category}
+                          onChange={(e) => setRow(a.id, { category: e.target.value })}
                         >
-                          {rates.map((r) => (
-                            <option key={r.grade} value={r.grade}>
-                              {r.grade} · {r.title}
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.title}
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td>
+                        <select
+                          className="input"
+                          value={a.country}
+                          onChange={(e) => setRow(a.id, { country: e.target.value, workLocation: "" })}
+                        >
+                          {rateCard.countries.map((country) => (
+                            <option key={country}>{country}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        {a.country === "India" && (
+                          <select
+                            className="input"
+                            value={a.workLocation}
+                            aria-label={`Work location for ${a.role || "allocation row"}`}
+                            onChange={(e) => setRow(a.id, { workLocation: e.target.value })}
+                          >
+                            <option value="">Choose work location</option>
+                            {INDIA_WORK_LOCATIONS.map((location) => (
+                              <option key={location}>{location}</option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td className="num">
                         <input
@@ -225,17 +331,6 @@ function Builder({ id }) {
                           onChange={(e) => setRow(a.id, { count: e.target.value })}
                         />
                       </td>
-                      <td className="num">
-                        <input
-                          className="input num-input"
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={a.months}
-                          onChange={(e) => setRow(a.id, { months: e.target.value })}
-                        />
-                      </td>
-                      <td className="num">{inr(lineCost(a, rateMap))}</td>
                       <td>
                         <button
                           className="btn icon"
@@ -250,7 +345,7 @@ function Builder({ id }) {
                   ))}
                   {form.allocations.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="empty">
+                        <td colSpan={6} className="empty">
                         No rows. Add one, or use AI assist.
                       </td>
                     </tr>
@@ -260,7 +355,19 @@ function Builder({ id }) {
             </div>
           </div>
 
-          <AiAssist onApply={(rows) => set({ allocations: rows })} />
+          <AiAssist
+            onApply={(rows) => {
+              const start = rateCard.calendar.findIndex((month) => month.month === form.startMonth);
+              const end = rateCard.calendar.findIndex((month) => month.month === form.endMonth);
+              set({
+                allocations: rows.map((row) => ({
+                  ...row,
+                  startMonth: form.startMonth,
+                  months: end - start + 1,
+                })),
+              });
+            }}
+          />
 
           {existing && (
             <div className="card pad">
@@ -310,25 +417,21 @@ function Builder({ id }) {
                 <dt>Subtotal</dt>
                 <dd>{inr(totals.subtotal)}</dd>
               </div>
-              <div>
-                <dt>Contingency ({Number(form.contingencyPct) || 0}%)</dt>
-                <dd>{inr(totals.contingency)}</dd>
-              </div>
               <div className="grand">
                 <dt>Total</dt>
                 <dd>{inr(totals.total)}</dd>
               </div>
             </dl>
 
-            <h3>By grade</h3>
+            <h3>By category</h3>
             <div className="bars">
-              {rates.map((r) => {
-                const v = totals.byGrade[r.grade] || 0;
+              {categories.map((category) => {
+                const v = totals.byCategory[category.id] || 0;
                 return (
-                  <div className="bar-row" key={r.grade}>
-                    <span className="bar-label">{r.grade}</span>
+                  <div className="bar-row" key={category.id}>
+                    <span className="bar-label">{category.id}</span>
                     <span className="bar-track">
-                      <span className="bar-fill" style={{ width: `${(v / maxGradeCost) * 100}%` }} />
+                      <span className="bar-fill" style={{ width: `${(v / maxCategoryCost) * 100}%` }} />
                     </span>
                     <span className="bar-value">{inr(v)}</span>
                   </div>
@@ -349,7 +452,7 @@ function Builder({ id }) {
               <p className="small error-text">Fix the errors above before saving.</p>
             )}
             <p className="muted small">
-              Priced at today's rate card. Saved versions keep their own rates.
+              Priced using the current country rates and work calendar. Saved versions keep their own inputs.
             </p>
           </div>
         </aside>
