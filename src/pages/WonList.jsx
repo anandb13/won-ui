@@ -1,22 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
-import { STATUSES } from "../lib/cost.js";
 
 export default function WonList() {
-  const { wons } = useStore();
+  const { wons, deleteWon } = useStore();
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("All");
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return wons.filter((w) => {
-      if (status !== "All" && w.status !== status) return false;
-      if (!term) return true;
-      return [w.contractId, w.name || w.title]
-        .some((value) => (value || "").toLowerCase().includes(term));
-    });
-  }, [wons, q, status]);
+    return wons.filter((w) =>
+      !term || [w.contractId, w.name || w.title]
+        .some((value) => (value || "").toLowerCase().includes(term))
+    );
+  }, [wons, q]);
 
   return (
     <div>
@@ -34,12 +30,6 @@ export default function WonList() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option>All</option>
-          {STATUSES.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
       </div>
 
       <div className="card table-wrap">
@@ -49,6 +39,7 @@ export default function WonList() {
               <th className="num">#</th>
               <th>Contract ID</th>
               <th>WON name</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -57,13 +48,28 @@ export default function WonList() {
                 <td className="num">{index + 1}</td>
                 <td>{w.contractId || "-"}</td>
                 <td>
-                  <Link to={`/won/${w.id}`}>{w.name || w.title}</Link>
+                  <Link to={`/won/${w.id}/calculation`}>{w.name || w.title}</Link>
+                </td>
+                <td>
+                  <div className="table-actions">
+                    <Link className="btn" to={`/won/${w.id}`}>Edit</Link>
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        if (window.confirm(`Delete ${w.name || w.title}? This cannot be undone.`)) {
+                          deleteWon(w.id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={3} className="empty">
+                <td colSpan={4} className="empty">
                   No work orders match.
                 </td>
               </tr>

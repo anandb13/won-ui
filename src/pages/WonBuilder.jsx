@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
 import { categoryFor, inr, summarize, validate } from "../lib/cost.js";
-import { INDIA_WORK_LOCATIONS, monthLabel } from "../data/reference.js";
+import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS, monthLabel } from "../data/reference.js";
 import AiAssist from "../components/AiAssist.jsx";
 
 let rowSeq = 0;
@@ -12,6 +12,7 @@ const blankRow = (startMonth = "2026-07", months = 1) => ({
   category: "ASE",
   country: "India",
   workLocation: "",
+  businessUnit: "",
   startMonth,
   count: 1,
   months,
@@ -64,6 +65,8 @@ function Builder({ id }) {
           name: existing.name || existing.title || "",
           referenceWonNumber: existing.referenceWonNumber || "",
           contractId: existing.contractId || "",
+          contractValue: existing.contractValue ?? "",
+          contractValueCurrency: existing.contractValueCurrency || "INR",
           ...initialDates,
           status: existing.status,
           allocations: savedAllocations.map((allocation) => ({
@@ -71,6 +74,7 @@ function Builder({ id }) {
             category: categoryFor(allocation) || "ASE",
             country: allocation.country || "India",
             workLocation: allocation.workLocation || "",
+            businessUnit: allocation.businessUnit || "",
             startMonth: allocation.startMonth || initialDates.startMonth,
           })),
         }
@@ -79,12 +83,13 @@ function Builder({ id }) {
           name: "",
           referenceWonNumber: "",
           contractId: "",
+          contractValue: "",
+          contractValueCurrency: "INR",
           ...initialDates,
           status: "Draft",
           allocations: [blankRow(initialDates.startMonth, initialDuration)],
         }
   );
-  const [notice, setNotice] = useState("");
   const [showErrors, setShowErrors] = useState(false);
 
   const totals = useMemo(
@@ -106,7 +111,6 @@ function Builder({ id }) {
   }
 
   const set = (patch) => {
-    setNotice("");
     setForm((f) => ({ ...f, ...patch }));
   };
   const setRow = (rowId, patch) =>
@@ -157,13 +161,9 @@ function Builder({ id }) {
       setShowErrors(true);
       return;
     }
-    const savedId = saveWon(form);
+    saveWon(form);
     setShowErrors(false);
-    if (!existing) {
-      navigate("/won", { replace: true });
-    } else {
-      setNotice(`Saved as version ${existing.versions.length + 1}.`);
-    }
+    navigate("/won", { replace: true });
   }
 
   const maxCategoryCost = Math.max(1, ...Object.values(totals.byCategory));
@@ -174,12 +174,6 @@ function Builder({ id }) {
       <div className="page-head">
         <div>
           <h1>{existing ? existing.number : "New work order"}</h1>
-          {existing && (
-            <span className="muted">
-              Current version v{existing.versions.length}. Saving creates v
-              {existing.versions.length + 1}.
-            </span>
-          )}
           {!existing && <span className="muted">The WON number is issued when you save.</span>}
         </div>
         <div className="row-gap">
@@ -187,12 +181,11 @@ function Builder({ id }) {
             Cancel
           </Link>
           <button className="btn primary" onClick={onSave}>
-            {existing ? "Save new version" : "Create"}
+            {existing ? "Save changes" : "Create"}
           </button>
         </div>
       </div>
 
-      {notice && <div className="banner ok">{notice}</div>}
       {showErrors && !form.name.trim() && <div className="banner error">Enter a WON name.</div>}
 
       <div className="builder">
@@ -225,6 +218,30 @@ function Builder({ id }) {
                   onChange={(e) => set({ contractId: e.target.value })}
                   placeholder="Contract identifier"
                 />
+              </label>
+              <label>
+                Contract value
+                <input
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={form.contractValue}
+                  onChange={(e) => set({ contractValue: e.target.value })}
+                  placeholder="Contract value"
+                />
+              </label>
+              <label>
+                Contract value currency
+                <select
+                  className="input"
+                  value={form.contractValueCurrency}
+                  onChange={(e) => set({ contractValueCurrency: e.target.value })}
+                >
+                  {["INR", "USD", "CAD", "AUD"].map((currency) => (
+                    <option key={currency}>{currency}</option>
+                  ))}
+                </select>
               </label>
               <label>
                 Start month
@@ -268,6 +285,7 @@ function Builder({ id }) {
                     <th>Category</th>
                     <th>Country</th>
                     <th>Work location</th>
+                    <th>Business Unit</th>
                     <th className="num">Headcount</th>
                     <th />
                   </tr>
@@ -322,6 +340,19 @@ function Builder({ id }) {
                           </select>
                         )}
                       </td>
+                      <td>
+                        <select
+                          className="input"
+                          value={a.businessUnit}
+                          aria-label={`Business Unit for ${a.role || "allocation row"}`}
+                          onChange={(e) => setRow(a.id, { businessUnit: e.target.value })}
+                        >
+                          <option value="">Select Business Unit</option>
+                          {BUSINESS_UNITS.map((businessUnit) => (
+                            <option key={businessUnit}>{businessUnit}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="num">
                         <input
                           className="input num-input"
@@ -345,7 +376,7 @@ function Builder({ id }) {
                   ))}
                   {form.allocations.length === 0 && (
                     <tr>
-                        <td colSpan={6} className="empty">
+                        <td colSpan={7} className="empty">
                         No rows. Add one, or use AI assist.
                       </td>
                     </tr>
@@ -369,40 +400,6 @@ function Builder({ id }) {
             }}
           />
 
-          {existing && (
-            <div className="card pad">
-              <h2>Version history</h2>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Version</th>
-                    <th>Saved</th>
-                    <th className="num">Total</th>
-                    <th className="num">Change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {existing.versions
-                    .slice()
-                    .reverse()
-                    .map((v, i, arr) => {
-                      const prev = arr[i + 1];
-                      const diff = prev ? v.total - prev.total : null;
-                      return (
-                        <tr key={v.v}>
-                          <td>v{v.v}</td>
-                          <td>{new Date(v.savedAt).toLocaleString("en-IN")}</td>
-                          <td className="num">{inr(v.total)}</td>
-                          <td className="num">
-                            {diff === null ? "-" : (diff >= 0 ? "+" : "-") + inr(Math.abs(diff))}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
         <aside className="builder-side">

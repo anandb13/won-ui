@@ -17,6 +17,20 @@ export const INDIA_WORK_LOCATIONS = [
   "Trivandrum",
 ];
 
+export const BUSINESS_UNITS = [
+  "ADM",
+  "AI",
+  "BPS",
+  "CBO",
+  "CIU",
+  "Cloud",
+  "CSP",
+  "D&A",
+  "ESU",
+  "IOTDE",
+  "TI",
+];
+
 const rateRows = [
   ["TRAINEE", "Trainee (Y)", 14281, 11467, 14602, 1607, 6272, 4568, 7286],
   ["ASE", "ASE (C1,C1Y)", 16562, 16634, 15237, 2680, 8415, 11322, 10893],
@@ -63,8 +77,8 @@ export const REFERENCE_DATA = {
   ),
   currencyFactors: [
     { currency: "USD", xFactor: 72.625, ultimatixFactor: 42.88, rtFactor: 72.625 },
-    { currency: "AUD", xFactor: 0, ultimatixFactor: 0, rtFactor: 0 },
-    { currency: "GBP", xFactor: 91.96, ultimatixFactor: 0, rtFactor: 91.96 },
+    { currency: "AUD", xFactor: 0, ultimatixFactor: 41.23, rtFactor: 0 },
+    { currency: "GBP", xFactor: 91.96, ultimatixFactor: 85.18, rtFactor: 91.96 },
     { currency: "CAD", xFactor: 55.801, ultimatixFactor: 42.66, rtFactor: 55.801 },
     { currency: "INR", xFactor: 0, ultimatixFactor: 1, rtFactor: 0 },
   ],

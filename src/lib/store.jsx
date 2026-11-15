@@ -21,7 +21,11 @@ function load() {
       if (saved.rateCard) {
         return {
           ...saved,
-          rateCard: { ...REFERENCE_DATA, ...saved.rateCard },
+          rateCard: {
+            ...REFERENCE_DATA,
+            ...saved.rateCard,
+            currencyFactors: REFERENCE_DATA.currencyFactors,
+          },
           wons: addSampleContractIds(saved.wons || SEED_WONS),
         };
       }
@@ -81,6 +85,19 @@ export function StoreProvider({ children }) {
         setState((s) => ({ ...s, rateCard: REFERENCE_DATA }));
       },
 
+      deleteWon(wonId) {
+        setState((s) => ({ ...s, wons: s.wons.filter((won) => won.id !== wonId) }));
+      },
+
+      setMilestoneFrequency(wonId, frequency) {
+        setState((s) => ({
+          ...s,
+          wons: s.wons.map((won) =>
+            won.id === wonId ? { ...won, milestoneFrequency: frequency } : won
+          ),
+        }));
+      },
+
       // Saves a new WON, or adds a new immutable version to an existing one.
       // Each version keeps the rates it was priced with.
       saveWon(draft) {
@@ -106,6 +123,8 @@ export function StoreProvider({ children }) {
                     title: draft.name,
                     referenceWonNumber: draft.referenceWonNumber,
                     contractId: draft.contractId,
+                    contractValue: draft.contractValue === "" ? "" : Number(draft.contractValue) || 0,
+                    contractValueCurrency: draft.contractValueCurrency || "INR",
                     startMonth: draft.startMonth,
                     endMonth: draft.endMonth,
                     contingencyPct: version.contingencyPct,
@@ -124,6 +143,8 @@ export function StoreProvider({ children }) {
           title: draft.name,
           referenceWonNumber: draft.referenceWonNumber,
           contractId: draft.contractId,
+          contractValue: draft.contractValue === "" ? "" : Number(draft.contractValue) || 0,
+          contractValueCurrency: draft.contractValueCurrency || "INR",
           startMonth: draft.startMonth,
           endMonth: draft.endMonth,
           status: draft.status,

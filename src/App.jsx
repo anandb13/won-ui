@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard.jsx";
 import WonList from "./pages/WonList.jsx";
 import WonBuilder from "./pages/WonBuilder.jsx";
+import Calculation from "./pages/Calculation.jsx";
 import RateCard from "./pages/RateCard.jsx";
 
 const NAV = [
@@ -36,6 +37,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/won" element={<WonList />} />
+          <Route path="/won/:id/calculation" element={<Calculation />} />
           <Route path="/won/:id" element={<WonBuilder />} />
           <Route path="/rates" element={<RateCard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
