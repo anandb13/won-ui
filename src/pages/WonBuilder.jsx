@@ -238,7 +238,7 @@ function Builder({ id }) {
                   value={form.contractValueCurrency}
                   onChange={(e) => set({ contractValueCurrency: e.target.value })}
                 >
-                  {["INR", "USD", "CAD", "AUD"].map((currency) => (
+                  {["INR", "USD", "CAD", "AUD", "GBP"].map((currency) => (
                     <option key={currency}>{currency}</option>
                   ))}
                 </select>

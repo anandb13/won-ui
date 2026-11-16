@@ -1,9 +1,16 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
 import { categoryFor, inr, lineCost } from "../lib/cost.js";
 import { monthLabel } from "../data/reference.js";
 
-const currencyLocales = { INR: "en-IN", USD: "en-US", CAD: "en-CA", AUD: "en-AU" };
+const currencyLocales = {
+  INR: "en-IN",
+  USD: "en-US",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  GBP: "en-GB",
+};
 
 function formatContractValue(amount, currency) {
   return new Intl.NumberFormat(currencyLocales[currency] || "en-IN", {
@@ -21,6 +28,17 @@ function gradeLabel(allocation, roles) {
 function dailyRateInr(allocation, rateCard) {
   const rate = rateCard.dailyRates?.[categoryFor(allocation)]?.[allocation.country];
   return rate == null ? "-" : inr(rate);
+}
+
+function milestoneDimensionFor(allocation) {
+  const workLocation = allocation.workLocation || allocation.country || "-";
+  const businessUnit = allocation.businessUnit || "-";
+  return {
+    key: `${workLocation}\u0000${businessUnit}`,
+    label: businessUnit === "ADM" || businessUnit === "-"
+      ? workLocation
+      : `${workLocation} - ${businessUnit}`,
+  };
 }
 
 function milestoneMonths(won, allocations, calendar) {
@@ -65,15 +83,19 @@ function milestoneMonths(won, allocations, calendar) {
 
 export default function Calculation() {
   const { id } = useParams();
+  const [factorSource, setFactorSource] = useState("ultimatix");
   const { wons, rateCard, setMilestoneFrequency } = useStore();
   const won = wons.find((item) => item.id === id);
   const selectedCurrency = won?.contractValueCurrency || "INR";
   const latestVersion = won?.versions[won.versions.length - 1];
   const savedPricing = latestVersion?.rateSnapshot;
   const calculationRates = savedPricing?.dailyRates ? savedPricing : rateCard;
-  const xFactor = rateCard.currencyFactors.find(
+  const currencyFactor = rateCard.currencyFactors.find(
     (factor) => factor.currency === selectedCurrency
-  )?.ultimatixFactor;
+  );
+  const xFactor = currencyFactor?.[
+    factorSource === "rt" ? "rtFactor" : "ultimatixFactor"
+  ];
   const allocations = latestVersion?.allocations || [];
 
   if (!won) {
@@ -103,17 +125,28 @@ export default function Calculation() {
   const milestoneDimensions = [
     ...new Map(
       allocations
-        .filter((allocation) => allocation.workLocation || allocation.businessUnit)
+        .filter((allocation) => allocation.workLocation || allocation.country || allocation.businessUnit)
         .map((allocation) => {
-          const workLocation = allocation.workLocation || "-";
-          const businessUnit = allocation.businessUnit || "-";
-          const label = businessUnit === "ADM"
-            ? workLocation
-            : `${workLocation} - ${businessUnit}`;
-          return [`${workLocation}\u0000${businessUnit}`, label];
+          const dimension = milestoneDimensionFor(allocation);
+          return [dimension.key, dimension];
         })
     ).values(),
   ];
+  const pvSelectedByAllocation = new Map(
+    calculationRows.map((row) => [
+      row.allocation.id,
+      hasContractValue && row.totalCostCbSelected != null && totalCostCbSelectedSum > 0
+        ? contractValue * (row.totalCostCbSelected / totalCostCbSelectedSum)
+        : null,
+    ])
+  );
+  const pvSelectedByDimension = new Map();
+  calculationRows.forEach(({ allocation }) => {
+    const pvSelected = pvSelectedByAllocation.get(allocation.id);
+    if (pvSelected == null) return;
+    const { key } = milestoneDimensionFor(allocation);
+    pvSelectedByDimension.set(key, (pvSelectedByDimension.get(key) || 0) + pvSelected);
+  });
 
   return (
     <div>
@@ -185,6 +218,22 @@ export default function Calculation() {
       </div>
 
       <h2>Calculation</h2>
+      <div className="factor-toggle" role="group" aria-label="Currency factor source">
+        <button
+          type="button"
+          aria-pressed={factorSource === "ultimatix"}
+          onClick={() => setFactorSource("ultimatix")}
+        >
+          Ultimatix
+        </button>
+        <button
+          type="button"
+          aria-pressed={factorSource === "rt"}
+          onClick={() => setFactorSource("rt")}
+        >
+          RT
+        </button>
+      </div>
       {belowProfitabilityTarget && (
         <div className="banner error">
           Contract value is below the minimum needed for 50% profitability ({formatContractValue(minimumContractValue, selectedCurrency)}).
@@ -212,10 +261,7 @@ export default function Calculation() {
           <tbody>
             {calculationRows.map((row) => {
               const { allocation, totalCostCbInr, totalCostCbSelected } = row;
-              const pvSelected =
-                hasContractValue && totalCostCbSelected != null && totalCostCbSelectedSum > 0
-                  ? contractValue * (totalCostCbSelected / totalCostCbSelectedSum)
-                  : null;
+              const pvSelected = pvSelectedByAllocation.get(allocation.id);
               const profitability =
                 pvSelected > 0 && totalCostCbSelected != null
                   ? ((pvSelected - totalCostCbSelected) / pvSelected) * 100
@@ -283,16 +329,27 @@ export default function Calculation() {
             <tbody>
               <tr>
                 <td className="milestone-empty" aria-hidden="true" />
-                {milestoneDimensions.map((dimension) => (
-                  <td key={dimension}>{dimension}</td>
+                {milestoneDimensions.map(({ key, label }) => (
+                  <td key={key}>{label}</td>
                 ))}
               </tr>
               {milestoneMonthList.map((month) => (
                 <tr key={month}>
                   <td>{monthLabel(month)}</td>
-                  {milestoneDimensions.map((dimension) => (
-                    <td key={dimension} />
-                  ))}
+                  {milestoneDimensions.map(({ key }) => {
+                    const totalPv = pvSelectedByDimension.get(key);
+                    const milestonePv =
+                      totalPv != null && milestoneMonthList.length > 0
+                        ? totalPv / milestoneMonthList.length
+                        : null;
+                    return (
+                      <td key={key}>
+                        {milestonePv == null
+                          ? "-"
+                          : formatContractValue(milestonePv, selectedCurrency)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

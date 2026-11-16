@@ -77,10 +77,10 @@ export const REFERENCE_DATA = {
   ),
   currencyFactors: [
     { currency: "USD", xFactor: 72.625, ultimatixFactor: 42.88, rtFactor: 72.625 },
-    { currency: "AUD", xFactor: 0, ultimatixFactor: 41.23, rtFactor: 0 },
+    { currency: "AUD", xFactor: 0, ultimatixFactor: 41.23, rtFactor: 52.413 },
     { currency: "GBP", xFactor: 91.96, ultimatixFactor: 85.18, rtFactor: 91.96 },
     { currency: "CAD", xFactor: 55.801, ultimatixFactor: 42.66, rtFactor: 55.801 },
-    { currency: "INR", xFactor: 0, ultimatixFactor: 1, rtFactor: 0 },
+    { currency: "INR", xFactor: 0, ultimatixFactor: 1, rtFactor: 1 },
   ],
   calendar: calendarRows.map(([month, workDays, ...leaveValues]) => ({
     month,

@@ -86,7 +86,6 @@ export default function RateCard() {
           <thead>
             <tr>
               <th>Currency</th>
-              <th className="num">$ X factor</th>
               <th className="num">$ Ultimatix factor</th>
               <th className="num">RT factor</th>
             </tr>
@@ -95,7 +94,6 @@ export default function RateCard() {
             {rateCard.currencyFactors.map((factor) => (
               <tr key={factor.currency}>
                 <td>{factor.currency}</td>
-                <td className="num">{factor.xFactor}</td>
                 <td className="num">{factor.ultimatixFactor}</td>
                 <td className="num">{factor.rtFactor}</td>
               </tr>
