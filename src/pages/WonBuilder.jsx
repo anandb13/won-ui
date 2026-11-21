@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
 import { categoryFor, inr, summarize, validate } from "../lib/cost.js";
 import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS, monthLabel } from "../data/reference.js";
-import AiAssist from "../components/AiAssist.jsx";
+import WonBuilderAiAssist from "../components/WonBuilderAiAssist.jsx";
 
 let rowSeq = 0;
 const blankRow = (startMonth = "2026-07", months = 1) => ({
@@ -386,18 +386,12 @@ function Builder({ id }) {
             </div>
           </div>
 
-          <AiAssist
-            onApply={(rows) => {
-              const start = rateCard.calendar.findIndex((month) => month.month === form.startMonth);
-              const end = rateCard.calendar.findIndex((month) => month.month === form.endMonth);
-              set({
-                allocations: rows.map((row) => ({
-                  ...row,
-                  startMonth: form.startMonth,
-                  months: end - start + 1,
-                })),
-              });
-            }}
+          <WonBuilderAiAssist
+            form={form}
+            existing={existing}
+            rateCard={rateCard}
+            setForm={set}
+            blankRow={blankRow}
           />
 
         </div>
