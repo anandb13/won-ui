@@ -5,9 +5,9 @@ import { monthLabel } from "../data/reference.js";
 import { isReady, missingInputs, monthCount } from "../lib/wonDraft.js";
 
 const STARTERS = [
-  "Create a WON named Data Platform Migration, from Oct 2026 to Mar 2027. Team: 1 Project Manager (CONS, India, Bangalore), 1 Data Architect (CONS, UK), 3 Data Engineers (AST, India, Bangalore), 4 Data Engineers (ASE, India, Hyderabad), 2 QA Engineers (ASE, India, Hyderabad). Contract ID C-2210, contract value 120000 GBP, reference WON REF-3105.",
-  "Create a WON named Support Desk Expansion, from Jan 2027 to Jun 2027. Team: 1 Delivery Lead (BPO6, India, Chennai), 2 Team Leads (BPO5, India, Chennai), 8 Support Agents (BPO4, India, Chennai), 6 Support Agents (BPO3, India, Kochi). Contract ID C-3377, contract value 3500000 INR, no reference WON number.",
-  "Create a WON named Cloud Modernization, from Jul 2026 to Dec 2026. Team: 1 Engagement Manager (CONS, Canada), 2 Cloud Architects (ASC, US), 3 DevOps Engineers (ITA, India, Pune), 3 Developers (ASE, India, Pune), 1 Developer (ASE, Mexico), 2 Associate Engineers (TRAINEE, India, Noida). Skip the contract ID and reference WON number, contract value 250000 USD.",
+  "Create a WON named Data Platform Migration, from Oct 2026 to Mar 2027. Team: 1 Project Manager (CONS, India, Bangalore, D&A), 1 Data Architect (CONS, UK, D&A), 3 Data Engineers (AST, India, Bangalore, D&A), 4 Data Engineers (ASE, India, Hyderabad, D&A), 2 QA Engineers (ASE, India, Hyderabad, D&A). Contract ID C-2210, contract value 120000 GBP, reference WON REF-3105.",
+  "Create a WON named Support Desk Expansion, from Jan 2027 to Jun 2027. Team: 1 Delivery Lead (BPO6, India, Chennai, BPS), 2 Team Leads (BPO5, India, Chennai, BPS), 8 Support Agents (BPO4, India, Chennai, BPS), 6 Support Agents (BPO3, India, Kochi, BPS). Contract ID C-3377, contract value 3500000 INR, skip the reference WON number.",
+  "Create a WON named Cloud Modernization, from Jul 2026 to Dec 2026. Team: 1 Engagement Manager (CONS, Canada, Cloud), 2 Cloud Architects (ASC, US, Cloud), 3 DevOps Engineers (ITA, India, Pune, Cloud), 3 Developers (ASE, India, Pune, ADM), 1 Developer (ASE, Mexico, ADM), 2 Associate Engineers (TRAINEE, India, Noida, ADM). Skip the contract ID and reference WON number, contract value 250000 USD.",
 ];
 
 // Chat that gathers what a WON needs, asks for whatever is missing, then builds the WON.
@@ -27,6 +27,7 @@ export default function AiAssist({ context, getFormDraft, estimate, onBuild }) {
   const [error, setError] = useState("");
   const abortRef = useRef(null);
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const idRef = useRef(0);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -34,6 +35,12 @@ export default function AiAssist({ context, getFormDraft, estimate, onBuild }) {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, busy, error]);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+  }, [input]);
 
   async function send(text, history = messages) {
     const content = text.trim();
@@ -107,7 +114,15 @@ export default function AiAssist({ context, getFormDraft, estimate, onBuild }) {
             <div className="muted small">Try one of these</div>
             <div className="chat-chips">
               {STARTERS.map((s) => (
-                <button key={s} className="chip" onClick={() => send(s)}>
+                <button
+                  key={s}
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    setInput(s);
+                    inputRef.current?.focus();
+                  }}
+                >
                   {s}
                 </button>
               ))}
@@ -154,6 +169,7 @@ export default function AiAssist({ context, getFormDraft, estimate, onBuild }) {
         }}
       >
         <textarea
+          ref={inputRef}
           className="input"
           rows={2}
           placeholder="Message the assistant…"

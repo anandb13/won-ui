@@ -686,7 +686,9 @@ tr:last-child td {
 }
 .chat-input .input {
   flex: 1;
-  resize: vertical;
+  resize: none;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .draft-facts {
