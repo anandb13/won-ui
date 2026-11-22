@@ -1,9 +1,30 @@
 import { useRef, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
 import { parseRateCsv, ratesToCsv } from "../lib/rateCsv.js";
 
 const MAX_BYTES = 1024 * 1024;
 const MAX_SHOWN = 50;
 const fmt = (n) => Number(n).toLocaleString("en-IN");
+const failed = (fileName, message) => ({
+  fileName,
+  result: { changes: [], unchanged: 0, warnings: [], errors: [message] },
+});
 
 // Upload a CSV to update "Daily cost by category and country (INR)".
 // Flow: choose file -> preview every change (nothing applied yet) -> Apply or Cancel.
@@ -28,14 +49,14 @@ export default function RateCsvUpload({ rateCard, onApply }) {
     if (!file) return;
     setMessage("");
     if (file.size > MAX_BYTES) {
-      setPreview({ fileName: file.name, result: { changes: [], unchanged: 0, warnings: [], errors: ["The file is larger than 1 MB."] } });
+      setPreview(failed(file.name, "The file is larger than 1 MB."));
       return;
     }
     try {
       const text = await file.text();
       setPreview({ fileName: file.name, result: parseRateCsv(text, rateCard) });
     } catch {
-      setPreview({ fileName: file.name, result: { changes: [], unchanged: 0, warnings: [], errors: ["The file could not be read."] } });
+      setPreview(failed(file.name, "The file could not be read."));
     }
   }
 
@@ -52,98 +73,128 @@ export default function RateCsvUpload({ rateCard, onApply }) {
   const blocked = !result || result.errors.length > 0 || result.changes.length === 0;
 
   return (
-    <div className="card pad csv-upload">
-      <div className="page-head tight">
-        <h2>Update rates from CSV</h2>
-        <div className="row-gap">
-          <button className="btn" onClick={download}>
-            Download current CSV
-          </button>
-          <button className="btn primary" onClick={() => inputRef.current?.click()}>
-            Upload CSV
-          </button>
-          <input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} aria-label="Upload rates CSV" />
-        </div>
-      </div>
-      <p className="muted small">
-        Columns: Category, then one column per country ({rateCard.countries.join(", ")}). Values are
-        daily cost in INR. Blank cells keep the current value. Only existing categories and countries
-        are accepted. Tip: download the current CSV, edit it, and upload it back.
-      </p>
+    <Card sx={{ mb: 3 }}>
+      <CardContent>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          spacing={1.5}
+        >
+          <Typography variant="h2">Update rates from CSV</Typography>
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={download}>
+              Download current CSV
+            </Button>
+            <Button variant="contained" startIcon={<FileUploadIcon />} onClick={() => inputRef.current?.click()}>
+              Upload CSV
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,text/csv"
+              style={{ display: "none" }}
+              onChange={onFile}
+              aria-label="Upload rates CSV"
+            />
+          </Stack>
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Columns: Category, then one column per country ({rateCard.countries.join(", ")}). Values are
+          daily cost in INR. Blank cells keep the current value. Only existing categories and countries
+          are accepted. Tip: download the current CSV, edit it, and upload it back.
+        </Typography>
 
-      <div aria-live="polite">
-        {message && <p className="csv-ok small">{message}</p>}
-        {result && (
-          <div className="csv-preview">
-            <p className="small">
-              <strong>{preview.fileName}</strong>:{" "}
-              {result.errors.length === 0
-                ? `${result.changes.length} rate${result.changes.length === 1 ? "" : "s"} will change, ${result.unchanged} unchanged.`
-                : "this file cannot be applied. Fix the problems below and upload it again."}
-            </p>
+        <Box aria-live="polite">
+          {message && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {message}
+            </Alert>
+          )}
+          {result && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>{preview.fileName}</strong>:{" "}
+                {result.errors.length === 0
+                  ? `${result.changes.length} rate${result.changes.length === 1 ? "" : "s"} will change, ${result.unchanged} unchanged.`
+                  : "this file cannot be applied. Fix the problems below and upload it again."}
+              </Typography>
 
-            {result.errors.length > 0 && (
-              <ul className="csv-errors small" role="alert">
-                {result.errors.slice(0, 20).map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-                {result.errors.length > 20 && <li>and {result.errors.length - 20} more problems</li>}
-              </ul>
-            )}
-            {result.warnings.length > 0 && (
-              <ul className="csv-warnings small">
-                {result.warnings.map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-              </ul>
-            )}
+              {result.errors.length > 0 && (
+                <Alert severity="error" sx={{ mb: 1.5 }}>
+                  <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                    {result.errors.slice(0, 20).map((m, i) => (
+                      <li key={i}>{m}</li>
+                    ))}
+                    {result.errors.length > 20 && <li>and {result.errors.length - 20} more problems</li>}
+                  </Box>
+                </Alert>
+              )}
+              {result.warnings.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 1.5 }}>
+                  <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                    {result.warnings.map((m, i) => (
+                      <li key={i}>{m}</li>
+                    ))}
+                  </Box>
+                </Alert>
+              )}
 
-            {result.errors.length === 0 && result.changes.length > 0 && (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th>Country</th>
-                      <th className="num">Current</th>
-                      <th className="num">New</th>
-                      <th className="num">Change</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.changes.slice(0, MAX_SHOWN).map((c) => {
-                      const pct = c.oldRate ? ((c.newRate - c.oldRate) / c.oldRate) * 100 : null;
-                      return (
-                        <tr key={c.category + c.country}>
-                          <td>{c.category}</td>
-                          <td>{c.country}</td>
-                          <td className="num">{fmt(c.oldRate)}</td>
-                          <td className="num">
-                            <strong>{fmt(c.newRate)}</strong>
-                          </td>
-                          <td className="num">{pct == null ? "new" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {result.changes.length > MAX_SHOWN && (
-                  <p className="muted small">and {result.changes.length - MAX_SHOWN} more changes</p>
-                )}
-              </div>
-            )}
+              {result.errors.length === 0 && result.changes.length > 0 && (
+                <>
+                  <Card sx={{ mb: 1.5 }}>
+                    <TableContainer sx={{ maxHeight: 320 }}>
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Category</TableCell>
+                            <TableCell>Country</TableCell>
+                            <TableCell align="right">Current</TableCell>
+                            <TableCell align="right">New</TableCell>
+                            <TableCell align="right">Change</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {result.changes.slice(0, MAX_SHOWN).map((c) => {
+                            const pct = c.oldRate ? ((c.newRate - c.oldRate) / c.oldRate) * 100 : null;
+                            return (
+                              <TableRow key={c.category + c.country}>
+                                <TableCell>{c.category}</TableCell>
+                                <TableCell>{c.country}</TableCell>
+                                <TableCell align="right">{fmt(c.oldRate)}</TableCell>
+                                <TableCell align="right">
+                                  <strong>{fmt(c.newRate)}</strong>
+                                </TableCell>
+                                <TableCell align="right">
+                                  {pct == null ? "new" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Card>
+                  {result.changes.length > MAX_SHOWN && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                      and {result.changes.length - MAX_SHOWN} more changes
+                    </Typography>
+                  )}
+                </>
+              )}
 
-            <div className="row-gap">
-              <button className="btn primary" disabled={blocked} onClick={apply}>
-                Apply {result.changes.length || ""} change{result.changes.length === 1 ? "" : "s"}
-              </button>
-              <button className="btn" onClick={() => setPreview(null)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+              <Stack direction="row" spacing={1}>
+                <Button variant="contained" disabled={blocked} onClick={apply}>
+                  Apply {result.changes.length || ""} change{result.changes.length === 1 ? "" : "s"}
+                </Button>
+                <Button variant="outlined" color="inherit" onClick={() => setPreview(null)}>
+                  Cancel
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
   );
 }

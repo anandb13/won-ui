@@ -1,22 +1,47 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { Box, Button, Card, CardContent, LinearProgress, Stack, Typography } from "@mui/material";
 import { useStore } from "../lib/store.jsx";
 import { STATUSES, inr, summarize } from "../lib/cost.js";
+import PageHeader from "../ui/PageHeader.jsx";
 
 function Bars({ items, format }) {
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
-    <div className="bars">
+    <Stack spacing={1.5}>
       {items.map((i) => (
-        <div className="bar-row" key={i.label}>
-          <span className="bar-label">{i.label}</span>
-          <span className="bar-track">
-            <span className="bar-fill" style={{ width: `${(i.value / max) * 100}%` }} />
-          </span>
-          <span className="bar-value">{format(i.value)}</span>
-        </div>
+        <Box
+          key={i.label}
+          sx={{ display: "grid", gridTemplateColumns: "88px 1fr auto", alignItems: "center", gap: 1.5 }}
+        >
+          <Typography variant="body2">{i.label}</Typography>
+          <LinearProgress
+            variant="determinate"
+            value={(i.value / max) * 100}
+            aria-label={`${i.label}: ${format(i.value)}`}
+            sx={{ height: 10, borderRadius: 5 }}
+          />
+          <Typography variant="body2" align="right" sx={{ minWidth: 70 }}>
+            {format(i.value)}
+          </Typography>
+        </Box>
       ))}
-    </div>
+    </Stack>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="body2" color="text.secondary">
+          {label}
+        </Typography>
+        <Typography variant="h5" sx={{ fontWeight: 600, mt: 0.5 }}>
+          {value}
+        </Typography>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -51,43 +76,48 @@ export default function Dashboard() {
   }, [wons, rateCard]);
 
   return (
-    <div>
-      <div className="page-head">
-        <h1>Dashboard</h1>
-        <Link className="btn primary" to="/won/new">
-          New WON
-        </Link>
-      </div>
+    <Box>
+      <PageHeader
+        title="Dashboard"
+        actions={
+          <Button component={Link} to="/won/new" variant="contained">
+            New WON
+          </Button>
+        }
+      />
 
-      <div className="stat-grid">
-        <div className="card stat">
-          <span className="stat-label">Work orders</span>
-          <span className="stat-value">{stats.count}</span>
-        </div>
-        <div className="card stat">
-          <span className="stat-label">Total value</span>
-          <span className="stat-value">{inr(stats.total)}</span>
-        </div>
-        <div className="card stat">
-          <span className="stat-label">Approved value</span>
-          <span className="stat-value">{inr(stats.approved)}</span>
-        </div>
-        <div className="card stat">
-          <span className="stat-label">Average per WON</span>
-          <span className="stat-value">{inr(stats.avg)}</span>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          mb: 2.5,
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+        }}
+      >
+        <Stat label="Work orders" value={stats.count} />
+        <Stat label="Total value" value={inr(stats.total)} />
+        <Stat label="Approved value" value={inr(stats.approved)} />
+        <Stat label="Average per WON" value={inr(stats.avg)} />
+      </Box>
 
-      <div className="two-col">
-        <div className="card pad">
-          <h2>Work orders by status</h2>
-          <Bars items={stats.byStatus} format={(n) => n} />
-        </div>
-        <div className="card pad">
-          <h2>Cost by category</h2>
-          <Bars items={stats.byCategory} format={inr} />
-        </div>
-      </div>
-    </div>
+      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" } }}>
+        <Card>
+          <CardContent>
+            <Typography variant="h2" sx={{ mb: 2 }}>
+              Work orders by status
+            </Typography>
+            <Bars items={stats.byStatus} format={(n) => n} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="h2" sx={{ mb: 2 }}>
+              Cost by category
+            </Typography>
+            <Bars items={stats.byCategory} format={inr} />
+          </CardContent>
+        </Card>
+      </Box>
+    </Box>
   );
 }

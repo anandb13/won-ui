@@ -1,9 +1,36 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  IconButton,
+  MenuItem,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useStore } from "../lib/store.jsx";
 import { categoryFor, validate } from "../lib/cost.js";
 import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS } from "../data/reference.js";
 import WonBuilderAiAssist from "../components/WonBuilderAiAssist.jsx";
+import PageHeader from "../ui/PageHeader.jsx";
+
+// slotProps shared by the project start/end date fields.
+const dateSlots = (min, max) => ({
+  inputLabel: { shrink: true },
+  htmlInput: { min, max },
+});
 
 let rowSeq = 0;
 
@@ -190,10 +217,12 @@ function Builder({ id }) {
 
   if (id !== "new" && !existing) {
     return (
-      <div>
-        <h1>Work order not found</h1>
-        <Link to="/won">Back to work orders</Link>
-      </div>
+      <Box>
+        <PageHeader title="Work order not found" />
+        <Button component={Link} to="/won" variant="outlined">
+          Back to work orders
+        </Button>
+      </Box>
     );
   }
 
@@ -249,8 +278,10 @@ function Builder({ id }) {
 
   function setProjectMonth(field, value) {
     const monthValue = dateToMonth(value) || value;
-    let startMonth = field === "startMonth" ? monthValue : form.startMonth;
-    let endMonth = field === "endMonth" ? monthValue : form.endMonth;
+    const oldStart = form.startMonth;
+    const oldEnd = form.endMonth;
+    let startMonth = field === "startMonth" ? monthValue : oldStart;
+    let endMonth = field === "endMonth" ? monthValue : oldEnd;
     let startIndex = rateCard.calendar.findIndex((month) => month.month === startMonth);
     let endIndex = rateCard.calendar.findIndex((month) => month.month === endMonth);
     if (startIndex > endIndex) {
@@ -265,9 +296,23 @@ function Builder({ id }) {
     set({
       startMonth,
       endMonth,
-      allocations: form.allocations.map((allocation) =>
-        clampAllocationToProject(allocation, rateCard.calendar, startMonth, endMonth)
-      ),
+      allocations: form.allocations.map((allocation) => {
+        const rowStart = allocation.startMonth || oldStart;
+        const rowEnd = endMonthFor(allocation, rateCard.calendar);
+        const trackedStart = rowStart === oldStart;
+        const trackedEnd = rowEnd === oldEnd;
+        let nextStart = trackedStart
+          ? startMonth
+          : clampMonthToRange(rateCard.calendar, rowStart, startMonth, endMonth);
+        let nextEnd = trackedEnd ? endMonth : clampMonthToRange(rateCard.calendar, rowEnd, startMonth, endMonth);
+        nextStart = clampMonthToRange(rateCard.calendar, nextStart, startMonth, endMonth);
+        nextEnd = clampMonthToRange(rateCard.calendar, nextEnd, startMonth, endMonth);
+        if (monthIndex(rateCard.calendar, nextEnd) < monthIndex(rateCard.calendar, nextStart)) {
+          if (trackedEnd && !trackedStart) nextEnd = nextStart;
+          else nextStart = nextEnd;
+        }
+        return withAllocationDates(allocation, rateCard.calendar, nextStart, nextEnd);
+      }),
     });
   }
 
@@ -287,269 +332,305 @@ function Builder({ id }) {
   }
 
   const hasErrors = issues.some((i) => i.level === "error");
+  const selectProps = { select: { displayEmpty: true } };
+  const projectDateSlots = dateSlots(calendarBounds.min, calendarBounds.max);
 
   return (
-    <div>
-      <div className="page-head">
-        <div>
-          <h1>{existing ? existing.number : "New work order"}</h1>
-          {!existing && <span className="muted">The WON number is issued when you save.</span>}
-        </div>
-        <div className="row-gap">
-          <Link className="btn" to="/won">
-            Cancel
-          </Link>
-          <button className="btn primary" onClick={onSave}>
-            {existing ? "Save changes" : "Create"}
-          </button>
-        </div>
-      </div>
+    <Box>
+      <PageHeader
+        title={existing ? existing.number : "New work order"}
+        subtitle={!existing ? "The WON number is issued when you save." : undefined}
+        actions={
+          <>
+            <Button component={Link} to="/won" variant="outlined" color="inherit">
+              Cancel
+            </Button>
+            <Button variant="contained" onClick={onSave}>
+              {existing ? "Save changes" : "Create"}
+            </Button>
+          </>
+        }
+      />
 
-      {showErrors && !form.name.trim() && <div className="banner error">Enter a WON name.</div>}
+      {showErrors && !form.name.trim() && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Enter a WON name.
+        </Alert>
+      )}
 
-      <div className="builder builder-single">
-        <div className="builder-main">
-          <div className="card pad">
-            <div className="form-grid">
-              <label>
-                WON name
-                <input
-                  className="input"
-                  value={form.name}
-                  onChange={(e) => set({ name: e.target.value })}
-                  placeholder="Work order name"
-                />
-              </label>
-              <label>
-                Reference WON number
-                <input
-                  className="input"
-                  value={form.referenceWonNumber}
-                  onChange={(e) => set({ referenceWonNumber: e.target.value })}
-                  placeholder="External reference"
-                />
-              </label>
-              <label>
-                Contract ID
-                <input
-                  className="input"
-                  value={form.contractId}
-                  onChange={(e) => set({ contractId: e.target.value })}
-                  placeholder="Contract identifier"
-                />
-              </label>
-              <label>
-                Contract value
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={form.contractValue}
-                  onChange={(e) => set({ contractValue: e.target.value })}
-                  placeholder="Contract value"
-                />
-              </label>
-              <label>
-                Contract value currency
-                <select
-                  className="input"
-                  value={form.contractValueCurrency}
-                  onChange={(e) => set({ contractValueCurrency: e.target.value })}
-                >
-                  {["INR", "USD", "CAD", "AUD", "GBP"].map((currency) => (
-                    <option key={currency}>{currency}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Start month
-                <input
-                  className="input"
-                  type="date"
-                  value={monthToStartDate(form.startMonth)}
-                  min={calendarBounds.min}
-                  max={calendarBounds.max}
-                  onChange={(e) => setProjectMonth("startMonth", e.target.value)}
-                />
-              </label>
-              <label>
-                End month
-                <input
-                  className="input"
-                  type="date"
-                  value={monthToEndDate(form.endMonth)}
-                  min={calendarBounds.min}
-                  max={calendarBounds.max}
-                  onChange={(e) => setProjectMonth("endMonth", e.target.value)}
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="card pad">
-            <div className="page-head tight">
-              <h2>Resource allocation</h2>
-              <button className="btn" onClick={addRow}>
-                Add row
-              </button>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Role</th>
-                    <th>Category</th>
-                    <th>Country</th>
-                    <th>Work location</th>
-                    <th>Business Unit</th>
-                    <th>Start month</th>
-                    <th>End month</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {form.allocations.map((a) => (
-                    <tr key={a.id}>
-                      <td>
-                        <input
-                          className="input"
-                          value={a.role}
-                          placeholder="e.g. Senior Engineer"
-                          onChange={(e) => setRow(a.id, { role: e.target.value })}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          className="input"
-                          value={a.category}
-                          onChange={(e) => setRow(a.id, { category: e.target.value })}
-                        >
-                          {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.title}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="input"
-                          value={a.country}
-                          onChange={(e) => setRow(a.id, { country: e.target.value, workLocation: "" })}
-                        >
-                          {rateCard.countries.map((country) => (
-                            <option key={country}>{country}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        {a.country === "India" && (
-                          <select
-                            className="input"
-                            value={a.workLocation}
-                            aria-label={`Work location for ${a.role || "allocation row"}`}
-                            onChange={(e) => setRow(a.id, { workLocation: e.target.value })}
-                          >
-                            <option value="">Choose work location</option>
-                            {INDIA_WORK_LOCATIONS.map((location) => (
-                              <option key={location}>{location}</option>
-                            ))}
-                          </select>
-                        )}
-                      </td>
-                      <td>
-                        <select
-                          className="input"
-                          value={a.businessUnit}
-                          aria-label={`Business Unit for ${a.role || "allocation row"}`}
-                          onChange={(e) => setRow(a.id, { businessUnit: e.target.value })}
-                        >
-                          <option value="">Select Business Unit</option>
-                          {BUSINESS_UNITS.map((businessUnit) => (
-                            <option key={businessUnit}>{businessUnit}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          className="input"
-                          type="date"
-                          value={monthToStartDate(
-                            clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth)
-                          )}
-                          min={projectBounds.min}
-                          max={projectBounds.max}
-                          aria-label={`Start month for ${a.role || "allocation row"}`}
-                          onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="input"
-                          type="date"
-                          value={monthToEndDate(
-                            clampMonthToRange(
-                              rateCard.calendar,
-                              endMonthFor(a, rateCard.calendar),
-                              form.startMonth,
-                              form.endMonth
-                            )
-                          )}
-                          min={projectBounds.min}
-                          max={projectBounds.max}
-                          aria-label={`End month for ${a.role || "allocation row"}`}
-                          onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <button
-                          className="btn icon"
-                          onClick={() => removeRow(a.id)}
-                          aria-label="Remove row"
-                          title="Remove row"
-                        >
-                          ×
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {form.allocations.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="empty">
-                        No rows. Add one, or use AI assist.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="allocation-checks">
-              <h3>Checks</h3>
-              {issues.length === 0 && <p className="muted small">All checks pass.</p>}
-              <ul className="issues">
-                {issues.map((i, idx) => (
-                  <li key={idx} className={i.level}>
-                    {i.text}
-                  </li>
+      <Stack spacing={2.5}>
+        <Card>
+          <CardContent>
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" },
+              }}
+            >
+              <TextField
+                label="WON name"
+                value={form.name}
+                onChange={(e) => set({ name: e.target.value })}
+                placeholder="Work order name"
+                error={showErrors && !form.name.trim()}
+              />
+              <TextField
+                label="Reference WON number"
+                value={form.referenceWonNumber}
+                onChange={(e) => set({ referenceWonNumber: e.target.value })}
+                placeholder="External reference"
+              />
+              <TextField
+                label="Contract ID"
+                value={form.contractId}
+                onChange={(e) => set({ contractId: e.target.value })}
+                placeholder="Contract identifier"
+              />
+              <TextField
+                label="Contract value"
+                type="number"
+                value={form.contractValue}
+                onChange={(e) => set({ contractValue: e.target.value })}
+                placeholder="Contract value"
+                slotProps={{ htmlInput: { min: 0, step: 1000 } }}
+              />
+              <TextField
+                select
+                label="Contract value currency"
+                value={form.contractValueCurrency}
+                onChange={(e) => set({ contractValueCurrency: e.target.value })}
+              >
+                {["INR", "USD", "CAD", "AUD", "GBP"].map((currency) => (
+                  <MenuItem key={currency} value={currency}>
+                    {currency}
+                  </MenuItem>
                 ))}
-              </ul>
-              {hasErrors && showErrors && (
-                <p className="small error-text">Fix the errors above before saving.</p>
+              </TextField>
+              <TextField
+                label="Start date"
+                type="date"
+                value={monthToStartDate(form.startMonth)}
+                onChange={(e) => setProjectMonth("startMonth", e.target.value)}
+                slotProps={projectDateSlots}
+              />
+              <TextField
+                label="End date"
+                type="date"
+                value={monthToEndDate(form.endMonth)}
+                onChange={(e) => setProjectMonth("endMonth", e.target.value)}
+                slotProps={projectDateSlots}
+              />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+              <Typography variant="h2">Resource allocation</Typography>
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={addRow}>
+                Add row
+              </Button>
+            </Stack>
+            <Card>
+              <TableContainer sx={{ overflowX: "visible" }}>
+                <Table
+                  size="small"
+                  sx={{
+                    tableLayout: "fixed",
+                    width: "100%",
+                    "& th, & td": { px: 1, py: 1, verticalAlign: "top" },
+                    "& th": { whiteSpace: "normal", lineHeight: 1.2 },
+                  }}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ width: "18%" }}>Role</TableCell>
+                      <TableCell sx={{ width: "12%" }}>Category</TableCell>
+                      <TableCell sx={{ width: "11%" }}>Country</TableCell>
+                      <TableCell sx={{ width: "15%" }}>Work location</TableCell>
+                      <TableCell sx={{ width: "14%" }}>Business Unit</TableCell>
+                      <TableCell sx={{ width: "13%" }}>Start date</TableCell>
+                      <TableCell sx={{ width: "13%" }}>End date</TableCell>
+                      <TableCell sx={{ width: 48, px: 0.5 }} />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {form.allocations.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell>
+                          <TextField
+                            fullWidth
+                            value={a.role}
+                            placeholder="e.g. Senior Engineer"
+                            onChange={(e) => setRow(a.id, { role: e.target.value })}
+                            slotProps={{ htmlInput: { "aria-label": `Role for row ${form.allocations.indexOf(a) + 1}` } }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            select
+                            fullWidth
+                            value={a.category}
+                            onChange={(e) => setRow(a.id, { category: e.target.value })}
+                          >
+                            {categories.map((category) => (
+                              <MenuItem key={category.id} value={category.id}>
+                                {category.title}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            select
+                            fullWidth
+                            value={a.country}
+                            onChange={(e) => setRow(a.id, { country: e.target.value, workLocation: "" })}
+                          >
+                            {rateCard.countries.map((country) => (
+                              <MenuItem key={country} value={country}>
+                                {country}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </TableCell>
+                        <TableCell>
+                          {a.country === "India" && (
+                            <TextField
+                              select
+                              fullWidth
+                              value={a.workLocation}
+                              onChange={(e) => setRow(a.id, { workLocation: e.target.value })}
+                              slotProps={{
+                                ...selectProps,
+                                htmlInput: { "aria-label": `Work location for ${a.role || "allocation row"}` },
+                              }}
+                            >
+                              <MenuItem value="">
+                                <em>Choose work location</em>
+                              </MenuItem>
+                              {INDIA_WORK_LOCATIONS.map((location) => (
+                                <MenuItem key={location} value={location}>
+                                  {location}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            select
+                            fullWidth
+                            value={a.businessUnit}
+                            onChange={(e) => setRow(a.id, { businessUnit: e.target.value })}
+                            slotProps={{
+                              ...selectProps,
+                              htmlInput: { "aria-label": `Business Unit for ${a.role || "allocation row"}` },
+                            }}
+                          >
+                            <MenuItem value="">
+                              <em>Select Business Unit</em>
+                            </MenuItem>
+                            {BUSINESS_UNITS.map((businessUnit) => (
+                              <MenuItem key={businessUnit} value={businessUnit}>
+                                {businessUnit}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            type="date"
+                            fullWidth
+                            value={monthToStartDate(
+                              clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth)
+                            )}
+                            onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
+                            slotProps={{
+                              htmlInput: {
+                                min: projectBounds.min,
+                                max: projectBounds.max,
+                                "aria-label": `Start date for ${a.role || "allocation row"}`,
+                              },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            type="date"
+                            fullWidth
+                            value={monthToEndDate(
+                              clampMonthToRange(
+                                rateCard.calendar,
+                                endMonthFor(a, rateCard.calendar),
+                                form.startMonth,
+                                form.endMonth
+                              )
+                            )}
+                            onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
+                            slotProps={{
+                              htmlInput: {
+                                min: projectBounds.min,
+                                max: projectBounds.max,
+                                "aria-label": `End date for ${a.role || "allocation row"}`,
+                              },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ px: 0.5 }}>
+                          <IconButton aria-label="Remove row" title="Remove row" onClick={() => removeRow(a.id)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {form.allocations.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center" sx={{ color: "text.secondary", py: 4 }}>
+                          No rows. Add one, or use AI assist.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Card>
+
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h3" sx={{ mb: 1 }}>
+                Checks
+              </Typography>
+              {issues.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  All checks pass.
+                </Typography>
               )}
-            </div>
-          </div>
+              <Stack spacing={0.75}>
+                {issues.map((i, idx) => (
+                  <Alert key={idx} severity={i.level === "error" ? "error" : "warning"} variant="outlined" sx={{ py: 0 }}>
+                    {i.text}
+                  </Alert>
+                ))}
+              </Stack>
+              {hasErrors && showErrors && (
+                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                  Fix the errors above before saving.
+                </Typography>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
 
-          <WonBuilderAiAssist
-            form={form}
-            existing={existing}
-            rateCard={rateCard}
-            setForm={set}
-            blankRow={blankRow}
-          />
-
-        </div>
-      </div>
-    </div>
+        <WonBuilderAiAssist
+          form={form}
+          existing={existing}
+          rateCard={rateCard}
+          setForm={set}
+          blankRow={blankRow}
+        />
+      </Stack>
+    </Box>
   );
 }

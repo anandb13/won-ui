@@ -1,6 +1,23 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
+import {
+  Box,
+  Button,
+  Card,
+  InputAdornment,
+  Link,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import { useStore } from "../lib/store.jsx";
+import PageHeader from "../ui/PageHeader.jsx";
 
 export default function WonList() {
   const { wons, deleteWon } = useStore();
@@ -15,68 +32,86 @@ export default function WonList() {
   }, [wons, q]);
 
   return (
-    <div>
-      <div className="page-head">
-        <h1>Work orders</h1>
-        <Link className="btn primary" to="/won/new">
-          New WON
-        </Link>
-      </div>
+    <Box>
+      <PageHeader
+        title="Work orders"
+        actions={
+          <Button component={RouterLink} to="/won/new" variant="contained">
+            New WON
+          </Button>
+        }
+      />
 
-      <div className="toolbar">
-        <input
-          className="input"
-          placeholder="Search Contract ID or WON name"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-      </div>
+      <TextField
+        placeholder="Search Contract ID or WON name"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        sx={{ mb: 2, width: { xs: "100%", sm: 360 }, bgcolor: "background.paper" }}
+        slotProps={{
+          htmlInput: { "aria-label": "Search Contract ID or WON name" },
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
-      <div className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th className="num">#</th>
-              <th>Contract ID</th>
-              <th>WON name</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((w, index) => (
-              <tr key={w.id}>
-                <td className="num">{index + 1}</td>
-                <td>{w.contractId || "-"}</td>
-                <td>
-                  <Link to={`/won/${w.id}/calculation`}>{w.name || w.title}</Link>
-                </td>
-                <td>
-                  <div className="table-actions">
-                    <Link className="btn" to={`/won/${w.id}`}>Edit</Link>
-                    <button
-                      className="btn"
-                      onClick={() => {
-                        if (window.confirm(`Delete ${w.name || w.title}? This cannot be undone.`)) {
-                          deleteWon(w.id);
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="empty">
-                  No work orders match.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <Card>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell align="right">#</TableCell>
+                <TableCell>Contract ID</TableCell>
+                <TableCell>WON name</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((w, index) => (
+                <TableRow key={w.id} hover>
+                  <TableCell align="right">{index + 1}</TableCell>
+                  <TableCell>{w.contractId || "-"}</TableCell>
+                  <TableCell>
+                    <Link component={RouterLink} to={`/won/${w.id}/calculation`} underline="hover">
+                      {w.name || w.title}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Button component={RouterLink} to={`/won/${w.id}`} size="small" variant="outlined">
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => {
+                          if (window.confirm(`Delete ${w.name || w.title}? This cannot be undone.`)) {
+                            deleteWon(w.id);
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} align="center" sx={{ color: "text.secondary", py: 4 }}>
+                    No work orders match.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+    </Box>
   );
 }

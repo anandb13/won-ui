@@ -1,8 +1,28 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  MenuItem,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
 import { useStore } from "../lib/store.jsx";
 import { categoryFor, inr, lineCost } from "../lib/cost.js";
 import { monthLabel } from "../data/reference.js";
+import PageHeader from "../ui/PageHeader.jsx";
 
 function expandAllocations(allocations) {
   return allocations.flatMap((allocation) => {
@@ -117,10 +137,12 @@ export default function Calculation() {
 
   if (!won) {
     return (
-      <div>
-        <h1>Work order not found</h1>
-        <Link to="/won">Back to work orders</Link>
-      </div>
+      <Box>
+        <PageHeader title="Work order not found" />
+        <Button component={Link} to="/won" variant="outlined">
+          Back to work orders
+        </Button>
+      </Box>
     );
   }
 
@@ -165,218 +187,240 @@ export default function Calculation() {
     pvSelectedByDimension.set(key, (pvSelectedByDimension.get(key) || 0) + pvSelected);
   });
 
+
+  const summaryItems = [
+    ["Contract ID", won.contractId || "-"],
+    [
+      "Contract value",
+      won.contractValue !== "" && won.contractValue != null
+        ? formatContractValue(won.contractValue, won.contractValueCurrency)
+        : "-",
+    ],
+    ["Reference WON", won.referenceWonNumber || "-"],
+    [
+      "Period",
+      won.startMonth && won.endMonth ? `${monthLabel(won.startMonth)} - ${monthLabel(won.endMonth)}` : "-",
+    ],
+  ];
+
   return (
-    <div>
-      <div className="page-head">
-        <div>
-          <h1>{won.name || won.title}</h1>
-        </div>
-        <Link className="btn" to="/won">Back to work orders</Link>
-      </div>
+    <Box>
+      <PageHeader
+        title={won.name || won.title}
+        actions={
+          <Button component={Link} to="/won" variant="outlined" color="inherit">
+            Back to work orders
+          </Button>
+        }
+      />
 
-      <dl className="summary">
-        <div>
-          <dt>Contract ID</dt>
-          <dd>{won.contractId || "-"}</dd>
-        </div>
-        <div>
-          <dt>Contract value</dt>
-          <dd>
-            {won.contractValue !== "" && won.contractValue != null
-              ? formatContractValue(won.contractValue, won.contractValueCurrency)
-              : "-"}
-          </dd>
-        </div>
-        <div>
-          <dt>Reference WON</dt>
-          <dd>{won.referenceWonNumber || "-"}</dd>
-        </div>
-        <div>
-          <dt>Period</dt>
-          <dd>
-            {won.startMonth && won.endMonth
-              ? `${monthLabel(won.startMonth)} - ${monthLabel(won.endMonth)}`
-              : "-"}
-          </dd>
-        </div>
-      </dl>
-
-      <h2>Resource allocation</h2>
-      <div className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Role</th>
-              <th>Grade</th>
-              <th>Location</th>
-              <th>Work Location</th>
-              <th>Business Unit</th>
-              <th>Start month</th>
-              <th>End month</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allocations.map((allocation) => (
-              <tr key={allocation.id}>
-                <td>{allocation.role || "-"}</td>
-                <td>{gradeLabel(allocation, rateCard.roles)}</td>
-                <td>{allocation.country || "-"}</td>
-                <td>{allocation.workLocation || "-"}</td>
-                <td>{allocation.businessUnit || "-"}</td>
-                <td>{allocation.startMonth ? monthLabel(allocation.startMonth) : "-"}</td>
-                <td>
-                  {allocationEndMonth(allocation, calculationRates.calendar)
-                    ? monthLabel(allocationEndMonth(allocation, calculationRates.calendar))
-                    : "-"}
-                </td>
-              </tr>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+            }}
+          >
+            {summaryItems.map(([label, value]) => (
+              <Box key={label}>
+                <Typography variant="caption" color="text.secondary" component="div">
+                  {label}
+                </Typography>
+                <Typography sx={{ fontWeight: 600 }}>{value}</Typography>
+              </Box>
             ))}
-            {allocations.length === 0 && (
-              <tr>
-                <td className="empty" colSpan={7}>No resource allocations.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </Box>
+        </CardContent>
+      </Card>
 
-      <h2>Calculation</h2>
-      <div className="factor-toggle" role="group" aria-label="Currency factor source">
-        <button
-          type="button"
-          aria-pressed={factorSource === "ultimatix"}
-          onClick={() => setFactorSource("ultimatix")}
+      <Typography variant="h2" sx={{ mb: 1.5 }}>
+        Resource allocation
+      </Typography>
+      <Card sx={{ mb: 3 }}>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Role</TableCell>
+                <TableCell>Grade</TableCell>
+                <TableCell>Location</TableCell>
+                <TableCell>Work Location</TableCell>
+                <TableCell>Business Unit</TableCell>
+                <TableCell>Start date</TableCell>
+                <TableCell>End date</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {allocations.map((allocation) => (
+                <TableRow key={allocation.id} hover>
+                  <TableCell>{allocation.role || "-"}</TableCell>
+                  <TableCell>{gradeLabel(allocation, rateCard.roles)}</TableCell>
+                  <TableCell>{allocation.country || "-"}</TableCell>
+                  <TableCell>{allocation.workLocation || "-"}</TableCell>
+                  <TableCell>{allocation.businessUnit || "-"}</TableCell>
+                  <TableCell>{allocation.startMonth ? monthLabel(allocation.startMonth) : "-"}</TableCell>
+                  <TableCell>
+                    {allocationEndMonth(allocation, calculationRates.calendar)
+                      ? monthLabel(allocationEndMonth(allocation, calculationRates.calendar))
+                      : "-"}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {allocations.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ color: "text.secondary", py: 4 }}>
+                    No resource allocations.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
+      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
+        <Typography variant="h2">Calculation</Typography>
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          color="primary"
+          value={factorSource}
+          onChange={(_, value) => value && setFactorSource(value)}
+          aria-label="Currency factor source"
         >
-          Ultimatix
-        </button>
-        <button
-          type="button"
-          aria-pressed={factorSource === "rt"}
-          onClick={() => setFactorSource("rt")}
-        >
-          RT
-        </button>
-      </div>
+          <ToggleButton value="ultimatix">Ultimatix</ToggleButton>
+          <ToggleButton value="rt">RT</ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
       {belowProfitabilityTarget && (
-        <div className="banner error">
+        <Alert severity="error" sx={{ mb: 2 }}>
           Contract value is below the minimum needed for 50% profitability ({formatContractValue(minimumContractValue, selectedCurrency)}).
-        </div>
+        </Alert>
       )}
-      <div className="card table-wrap">
-        <table className="calculation-table">
-          <thead>
-            <tr>
-              <th>Grade</th>
-              <th>Location</th>
-              <th>Work Location</th>
-              <th>Business Unit</th>
-              <th>Cost per day in INR</th>
-              <th>Currency</th>
-              <th>X factor</th>
-              <th>Total Cost (CB) in INR</th>
-              <th>{`Total Cost (CB) in ${selectedCurrency}`}</th>
-              <th>PV in INR</th>
-              <th>{`PV in ${selectedCurrency}`}</th>
-              <th>Profitability</th>
-            </tr>
-          </thead>
-          <tbody>
-            {calculationRows.map((row) => {
-              const { allocation, totalCostCbInr, totalCostCbSelected } = row;
-              const pvSelected = pvSelectedByAllocation.get(allocation.id);
-              const profitability =
-                pvSelected > 0 && totalCostCbSelected != null
-                  ? ((pvSelected - totalCostCbSelected) / pvSelected) * 100
-                  : null;
-              return (
-                <tr key={allocation.id}>
-                  <td>{gradeLabel(allocation, rateCard.roles)}</td>
-                  <td>{allocation.country || "-"}</td>
-                  <td>{allocation.workLocation || "-"}</td>
-                  <td>{allocation.businessUnit || "-"}</td>
-                  <td className="num">{dailyRateInr(allocation, calculationRates)}</td>
-                  <td>{selectedCurrency}</td>
-                  <td className="num">{xFactor ?? "-"}</td>
-                  <td className="num">{inr(totalCostCbInr)}</td>
-                  <td className="num">
-                    {totalCostCbSelected == null
-                      ? "-"
-                      : formatContractValue(totalCostCbSelected, selectedCurrency)}
-                  </td>
-                  <td className="num">
-                    {pvSelected == null ? "-" : inr(pvSelected * xFactor)}
-                  </td>
-                  <td className="num">
-                    {pvSelected == null
-                      ? "-"
-                      : formatContractValue(pvSelected, selectedCurrency)}
-                  </td>
-                  <td className="num">
-                    {profitability == null ? "-" : `${profitability.toFixed(1)}%`}
-                  </td>
-                </tr>
-              );
-            })}
-            {allocations.length === 0 && (
-              <tr>
-                <td className="empty" colSpan={12}>No resource allocations.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Grade</TableCell>
+                <TableCell>Location</TableCell>
+                <TableCell>Work Location</TableCell>
+                <TableCell>Business Unit</TableCell>
+                <TableCell align="right">Cost per day in INR</TableCell>
+                <TableCell>Currency</TableCell>
+                <TableCell align="right">X factor</TableCell>
+                <TableCell align="right">Total Cost (CB) in INR</TableCell>
+                <TableCell align="right">{`Total Cost (CB) in ${selectedCurrency}`}</TableCell>
+                <TableCell align="right">PV in INR</TableCell>
+                <TableCell align="right">{`PV in ${selectedCurrency}`}</TableCell>
+                <TableCell align="right">Profitability</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {calculationRows.map((row) => {
+                const { allocation, totalCostCbInr, totalCostCbSelected } = row;
+                const pvSelected = pvSelectedByAllocation.get(allocation.id);
+                const profitability =
+                  pvSelected > 0 && totalCostCbSelected != null
+                    ? ((pvSelected - totalCostCbSelected) / pvSelected) * 100
+                    : null;
+                return (
+                  <TableRow key={allocation.id} hover>
+                    <TableCell>{gradeLabel(allocation, rateCard.roles)}</TableCell>
+                    <TableCell>{allocation.country || "-"}</TableCell>
+                    <TableCell>{allocation.workLocation || "-"}</TableCell>
+                    <TableCell>{allocation.businessUnit || "-"}</TableCell>
+                    <TableCell align="right">{dailyRateInr(allocation, calculationRates)}</TableCell>
+                    <TableCell>{selectedCurrency}</TableCell>
+                    <TableCell align="right">{xFactor ?? "-"}</TableCell>
+                    <TableCell align="right">{inr(totalCostCbInr)}</TableCell>
+                    <TableCell align="right">
+                      {totalCostCbSelected == null
+                        ? "-"
+                        : formatContractValue(totalCostCbSelected, selectedCurrency)}
+                    </TableCell>
+                    <TableCell align="right">
+                      {pvSelected == null ? "-" : inr(pvSelected * xFactor)}
+                    </TableCell>
+                    <TableCell align="right">
+                      {pvSelected == null ? "-" : formatContractValue(pvSelected, selectedCurrency)}
+                    </TableCell>
+                    <TableCell align="right">
+                      {profitability == null ? "-" : `${profitability.toFixed(1)}%`}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {allocations.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={12} align="center" sx={{ color: "text.secondary", py: 4 }}>
+                    No resource allocations.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
 
-      <section className="milestone-section">
-        <div className="milestone-head">
-          <h2>Milestone split</h2>
-          <label className="milestone-frequency">
-            Frequency
-          <select
-            className="input"
-            aria-label="Milestone frequency"
+      <Box component="section" sx={{ mt: 3 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
+          <Typography variant="h2">Milestone split</Typography>
+          <TextField
+            select
+            label="Frequency"
+            sx={{ minWidth: 200 }}
             value={won.milestoneFrequency || ""}
             onChange={(event) => setMilestoneFrequency(won.id, event.target.value)}
+            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
           >
-            <option value="">Select frequency</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="half-yearly">Half-yearly</option>
-            <option value="yearly">Yearly</option>
-          </select>
-          </label>
-        </div>
-        <div className="card table-wrap milestone-table-wrap">
-          <table className="milestone-table">
-            <tbody>
-              <tr>
-                <td className="milestone-empty" aria-hidden="true" />
-                {milestoneDimensions.map(({ key, label }) => (
-                  <td key={key}>{label}</td>
+            <MenuItem value="">
+              <em>Select frequency</em>
+            </MenuItem>
+            <MenuItem value="monthly">Monthly</MenuItem>
+            <MenuItem value="quarterly">Quarterly</MenuItem>
+            <MenuItem value="half-yearly">Half-yearly</MenuItem>
+            <MenuItem value="yearly">Yearly</MenuItem>
+          </TextField>
+        </Stack>
+        <Card>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell aria-hidden="true" />
+                  {milestoneDimensions.map(({ key, label }) => (
+                    <TableCell key={key}>{label}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {milestoneMonthList.map((month) => (
+                  <TableRow key={month} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{monthLabel(month)}</TableCell>
+                    {milestoneDimensions.map(({ key }) => {
+                      const totalPv = pvSelectedByDimension.get(key);
+                      const milestonePv =
+                        totalPv != null && milestoneMonthList.length > 0
+                          ? totalPv / milestoneMonthList.length
+                          : null;
+                      return (
+                        <TableCell key={key}>
+                          {milestonePv == null
+                            ? "-"
+                            : formatContractValue(milestonePv, selectedCurrency)}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
                 ))}
-              </tr>
-              {milestoneMonthList.map((month) => (
-                <tr key={month}>
-                  <td>{monthLabel(month)}</td>
-                  {milestoneDimensions.map(({ key }) => {
-                    const totalPv = pvSelectedByDimension.get(key);
-                    const milestonePv =
-                      totalPv != null && milestoneMonthList.length > 0
-                        ? totalPv / milestoneMonthList.length
-                        : null;
-                    return (
-                      <td key={key}>
-                        {milestonePv == null
-                          ? "-"
-                          : formatContractValue(milestonePv, selectedCurrency)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      </Box>
+    </Box>
   );
 }

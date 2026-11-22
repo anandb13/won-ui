@@ -1,4 +1,23 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  AlertTitle,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { AI_IS_MOCK, sendChat } from "../lib/aiChat.js";
 import { inr } from "../lib/cost.js";
 import { monthLabel } from "../data/reference.js";
@@ -12,9 +31,21 @@ function rowEndMonth(context, row, fallbackEnd) {
 }
 
 const STARTERS = [
-  "Create a WON named Data Platform Migration, from Oct 2026 to Mar 2027. Team: 1 Project Manager (CONS, India, Bangalore, D&A), 1 Data Architect (CONS, UK, D&A), 3 Data Engineers (AST, India, Bangalore, D&A), 4 Data Engineers (ASE, India, Hyderabad, D&A), 2 QA Engineers (ASE, India, Hyderabad, D&A). Contract ID C-2210, contract value 120000 GBP, reference WON REF-3105.",
-  "Create a WON named Support Desk Expansion, from Jan 2027 to Jun 2027. Team: 1 Delivery Lead (BPO6, India, Chennai, BPS), 2 Team Leads (BPO5, India, Chennai, BPS), 8 Support Agents (BPO4, India, Chennai, BPS), 6 Support Agents (BPO3, India, Kochi, BPS). Contract ID C-3377, contract value 3500000 INR, skip the reference WON number.",
-  "Create a WON named Cloud Modernization, from Jul 2026 to Dec 2026. Team: 1 Engagement Manager (CONS, Canada, Cloud), 2 Cloud Architects (ASC, US, Cloud), 3 DevOps Engineers (ITA, India, Pune, Cloud), 3 Developers (ASE, India, Pune, ADM), 1 Developer (ASE, Mexico, ADM), 2 Associate Engineers (TRAINEE, India, Noida, ADM). Skip the contract ID and reference WON number, contract value 250000 USD.",
+  {
+    title: "Data Platform Migration",
+    prompt:
+      "Create a WON named Data Platform Migration, from Jan 2027 to Jun 2027. Team: 1 Project Manager (CONS, India, Bangalore, D&A), 1 Data Architect (CONS, UK, D&A), 3 Data Engineers (AST, India, Bangalore, D&A), 4 Data Engineers (ASE, India, Hyderabad, D&A), 2 QA Engineers (ASE, India, Hyderabad, D&A). Contract ID C-2210, contract value 120000 GBP, reference WON REF-3105.",
+  },
+  {
+    title: "Support Desk Expansion",
+    prompt:
+      "Create a WON named Support Desk Expansion, from Jan 2027 to Jun 2027. Team: 1 Delivery Lead (BPO6, India, Chennai, BPS), 2 Team Leads (BPO5, India, Chennai, BPS), 8 Support Agents (BPO4, India, Chennai, BPS), 6 Support Agents (BPO3, India, Kochi, BPS). Contract ID C-3377, contract value 3500000 INR, skip the reference WON number.",
+  },
+  {
+    title: "Cloud Modernization",
+    prompt:
+      "Create a WON named Cloud Modernization, from Jul 2027 to Dec 2027. Team: 1 Engagement Manager (CONS, Canada, Cloud), 2 Cloud Architects (ASC, US, Cloud), 3 DevOps Engineers (ITA, India, Pune, Cloud), 3 Developers (ASE, India, Pune, ADM), 1 Developer (ASE, Mexico, ADM), 2 Associate Engineers (TRAINEE, India, Noida, ADM). Skip the contract ID and reference WON number, contract value 250000 USD.",
+  },
 ];
 
 // Chat that gathers what a WON needs, asks for whatever is missing, then builds the WON.
@@ -42,12 +73,6 @@ export default function AiAssist({ context, getFormDraft, estimate, onBuild }) {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, busy, error]);
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
-  }, [input]);
 
   async function send(text, history = messages) {
     const content = text.trim();
@@ -100,106 +125,148 @@ export default function AiAssist({ context, getFormDraft, estimate, onBuild }) {
   const lastIsUser = messages[messages.length - 1]?.role === "user";
 
   return (
-    <div className="card pad chat">
-      <div className="page-head tight">
-        <h2>AI assist</h2>
-        {messages.length > 0 && (
-          <button className="btn" onClick={reset}>
-            New chat
-          </button>
-        )}
-      </div>
-      <p className="muted small">
-        Describe the work. I will ask for anything the WON still needs, then fill in the form for
-        you to review.
-        {AI_IS_MOCK && " Demo mode: no backend connected."}
-      </p>
+    <Card>
+      <CardContent>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h2">AI assist</Typography>
+          {messages.length > 0 && (
+            <Button size="small" variant="outlined" color="inherit" onClick={reset}>
+              New chat
+            </Button>
+          )}
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Describe the work. I will ask for anything the WON still needs, then fill in the form for
+          you to review.
+          {AI_IS_MOCK && " Demo mode: no backend connected."}
+        </Typography>
 
-      <div className="chat-list" ref={listRef} aria-live="polite">
-        {messages.length === 0 && (
-          <div className="chat-empty">
-            <div className="muted small">Try one of these</div>
-            <div className="chat-chips">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className="chip"
-                  onClick={() => {
-                    setInput(s);
-                    inputRef.current?.focus();
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {messages.map((m) => (
-          <div key={m.id} className={`chat-msg ${m.role}`}>
-            <div className="chat-bubble">{m.content}</div>
-          </div>
-        ))}
-        {busy && (
-          <div className="chat-msg assistant">
-            <div className="chat-bubble typing">Thinking…</div>
-          </div>
-        )}
-        {error && (
-          <div className="chat-error" role="alert">
-            {error}{" "}
-            {lastIsUser && !busy && (
-              <button className="btn" onClick={retry}>
-                Retry
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+        <Stack
+          ref={listRef}
+          spacing={1.25}
+          aria-live="polite"
+          sx={{ my: 2, maxHeight: 460, minHeight: 120, overflowY: "auto", pr: 0.5 }}
+        >
+          {messages.length === 0 && (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Try one of these
+              </Typography>
+              <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
+                {STARTERS.map((s) => (
+                  <Chip
+                    key={s.title}
+                    label={s.title}
+                    variant="outlined"
+                    color="primary"
+                    clickable
+                    onClick={() => {
+                      setInput(s.prompt);
+                      inputRef.current?.focus();
+                    }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+          {messages.map((m) => (
+            <Bubble key={m.id} role={m.role}>
+              {m.content}
+            </Bubble>
+          ))}
+          {busy && (
+            <Bubble role="assistant">
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={14} />
+                <span>Thinking…</span>
+              </Stack>
+            </Bubble>
+          )}
+          {error && (
+            <Alert
+              severity="error"
+              action={
+                lastIsUser && !busy ? (
+                  <Button color="inherit" size="small" onClick={retry}>
+                    Retry
+                  </Button>
+                ) : null
+              }
+            >
+              {error}
+            </Alert>
+          )}
+        </Stack>
 
-      {draft && (
-        <DraftPanel
-          draft={draft}
-          context={context}
-          total={estimate(draft)}
-          built={built}
-          onBuild={build}
-        />
-      )}
+        {draft && (
+          <DraftPanel
+            draft={draft}
+            context={context}
+            total={estimate(draft)}
+            built={built}
+            onBuild={build}
+          />
+        )}
 
-      <form
-        className="chat-input"
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-      >
-        <textarea
-          ref={inputRef}
-          className="input"
-          rows={2}
-          placeholder="Message the assistant…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              send(input);
-            }
+        <Stack
+          component="form"
+          direction="row"
+          spacing={1}
+          alignItems="flex-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(input);
           }}
-        />
-        {busy ? (
-          <button type="button" className="btn" onClick={() => abortRef.current?.abort()}>
-            Stop
-          </button>
-        ) : (
-          <button type="submit" className="btn primary" disabled={!input.trim()}>
-            Send
-          </button>
-        )}
-      </form>
-    </div>
+        >
+          <TextField
+            fullWidth
+            multiline
+            minRows={2}
+            maxRows={8}
+            inputRef={inputRef}
+            placeholder="Message the assistant…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                send(input);
+              }
+            }}
+            slotProps={{ htmlInput: { "aria-label": "Message the assistant" } }}
+          />
+          {busy ? (
+            <Button type="button" variant="outlined" color="inherit" onClick={() => abortRef.current?.abort()}>
+              Stop
+            </Button>
+          ) : (
+            <Button type="submit" variant="contained" disabled={!input.trim()}>
+              Send
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Bubble({ role, children }) {
+  const user = role === "user";
+  return (
+    <Box
+      sx={{
+        alignSelf: user ? "flex-end" : "flex-start",
+        maxWidth: "90%",
+        px: 1.5,
+        py: 1,
+        borderRadius: 2,
+        whiteSpace: "pre-wrap",
+        bgcolor: user ? "primary.main" : "grey.100",
+        color: user ? "primary.contrastText" : "text.primary",
+      }}
+    >
+      {children}
+    </Box>
   );
 }
 
@@ -212,9 +279,11 @@ function DraftPanel({ draft, context, total, built, onBuild }) {
   const ready = isReady(draft);
 
   return (
-    <div className="suggestion chat-proposal">
-      <h3>WON draft</h3>
-      <dl className="draft-facts">
+    <Box sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 2, mb: 2, bgcolor: "background.default" }}>
+      <Typography variant="h3" sx={{ mb: 1.5 }}>
+        WON draft
+      </Typography>
+      <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", mb: 2 }}>
         <Fact label="Name" value={draft.name} />
         <Fact
           label="Period"
@@ -230,76 +299,88 @@ function DraftPanel({ draft, context, total, built, onBuild }) {
           value={draft.contractValue === "" ? "" : `${draft.contractValueCurrency} ${Number(draft.contractValue).toLocaleString("en-IN")}`}
         />
         <Fact label="Reference WON" value={draft.referenceWonNumber} />
-      </dl>
+      </Box>
 
       {draft.rows.length > 0 && (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th>Role</th>
-                <th>Category</th>
-                <th>Country</th>
-                <th>Start</th>
-                <th>End</th>
-              </tr>
-            </thead>
-            <tbody>
-              {draft.rows.map((r, i) => {
-                const start = r.startMonth || draft.startMonth;
-                const end = rowEndMonth(context, { ...r, startMonth: start }, draft.endMonth);
-                return (
-                  <tr key={i}>
-                    <td>{r.role}</td>
-                    <td>{r.category}</td>
-                    <td>
-                      {r.country}
-                      {r.workLocation ? ` · ${r.workLocation}` : ""}
-                    </td>
-                    <td>{start ? monthLabel(start) : "not set"}</td>
-                    <td>{end ? monthLabel(end) : "not set"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="muted small chat-total">
+          <Card>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Country</TableCell>
+                    <TableCell>Start</TableCell>
+                    <TableCell>End</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {draft.rows.map((r, i) => {
+                    const start = r.startMonth || draft.startMonth;
+                    const end = rowEndMonth(context, { ...r, startMonth: start }, draft.endMonth);
+                    return (
+                      <TableRow key={i}>
+                        <TableCell>{r.role}</TableCell>
+                        <TableCell>{r.category}</TableCell>
+                        <TableCell>
+                          {r.country}
+                          {r.workLocation ? ` · ${r.workLocation}` : ""}
+                        </TableCell>
+                        <TableCell>{start ? monthLabel(start) : "not set"}</TableCell>
+                        <TableCell>{end ? monthLabel(end) : "not set"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Card>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {heads} people · {total == null ? "estimate once the period is set" : `est. ${inr(total)}`}
-          </div>
+          </Typography>
         </>
       )}
 
       {required.length > 0 && (
-        <div className="chat-missing">
-          <strong className="small">Still needed</strong>
-          <ul>
+        <Alert severity="warning" sx={{ mt: 1.5 }}>
+          <AlertTitle>Still needed</AlertTitle>
+          <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
             {required.map((m) => (
               <li key={m.key}>{m.label}</li>
             ))}
-          </ul>
-        </div>
+          </Box>
+        </Alert>
       )}
       {ready && optional.length > 0 && (
-        <div className="muted small chat-total">
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           Optional, not provided: {optional.map((m) => m.label).join(", ")}
-        </div>
+        </Typography>
       )}
 
-      <div className="row-gap">
-        <button className="btn primary" disabled={!ready || built} onClick={onBuild}>
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 2 }}>
+        <Button variant="contained" disabled={!ready || built} onClick={onBuild}>
           {built ? "Built into form" : "Build WON"}
-        </button>
-        {built && <span className="small chat-applied">Review the form, then press Create.</span>}
-      </div>
-    </div>
+        </Button>
+        {built && (
+          <Typography variant="body2" color="success.main">
+            Review the form, then press Create.
+          </Typography>
+        )}
+      </Stack>
+    </Box>
   );
 }
 
 function Fact({ label, value }) {
   return (
-    <div>
-      <dt>{label}</dt>
-      <dd className={value ? "" : "muted"}>{value || "not set"}</dd>
-    </div>
+    <Box>
+      <Typography variant="caption" color="text.secondary" component="div">
+        {label}
+      </Typography>
+      <Typography variant="body2" color={value ? "text.primary" : "text.secondary"}>
+        {value || "not set"}
+      </Typography>
+    </Box>
   );
 }

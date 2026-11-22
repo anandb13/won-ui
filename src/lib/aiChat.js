@@ -42,8 +42,23 @@ export async function sendChat({ messages, context, draft, signal }) {
 // Indian location, asks for what is missing, then says the WON is ready to build.
 const MONTH_NAMES = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
+function monthCodeFromName(name, year) {
+  const mm = String(MONTH_NAMES.indexOf(String(name || "").slice(0, 3).toLowerCase()) + 1).padStart(2, "0");
+  return mm === "00" || !year ? "" : `${year}-${mm}`;
+}
+
 function parseDates(text, ctx) {
   const t = text.toLowerCase();
+  const range = text.match(
+    /\bfrom\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*(20\d\d)\s*to\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*(20\d\d)\b/i
+  );
+  if (range) {
+    const start = monthCodeFromName(range[1], range[2]);
+    const end = monthCodeFromName(range[3], range[4]);
+    if (ctx.months.includes(start) && ctx.months.includes(end) && ctx.months.indexOf(end) >= ctx.months.indexOf(start)) {
+      return { startMonth: start, endMonth: end };
+    }
+  }
   const iso = t.match(/\b(20\d\d)-(\d\d)\b/);
   let start = iso && ctx.months.includes(iso[0]) ? iso[0] : "";
   if (!start) {
@@ -60,6 +75,62 @@ function parseDates(text, ctx) {
   return end ? { startMonth: start, endMonth: end } : {};
 }
 
+function parseStructuredPrompt(text, ctx) {
+  const patch = {};
+  const name = text.match(/\b(?:Create a WON|WON)\s+named\s+(.+?),\s*(?:from\b|starting\b)/i);
+  if (name) patch.name = name[1].trim();
+
+  Object.assign(patch, parseDates(text, ctx));
+
+  const skipped = [];
+  if (/\bskip\b[^.]*\breference WON(?: number)?\b/i.test(text)) skipped.push("referenceWonNumber");
+  else {
+    const ref = text.match(/\breference WON(?: number)?\s+([A-Za-z0-9-]+)/i);
+    if (ref) patch.referenceWonNumber = ref[1];
+  }
+  if (/\bskip\b[^.]*\bcontract ID\b/i.test(text)) skipped.push("contractId");
+  else {
+    const contract = text.match(/\bContract ID\s+([A-Za-z0-9-]+)/i);
+    if (contract) patch.contractId = contract[1];
+  }
+  const value = text.match(/\bcontract value\s+([\d,]+(?:\.\d+)?)\s*([A-Z]{3})\b/i);
+  if (value) {
+    const amount = Number(String(value[1]).replace(/,/g, ""));
+    if (Number.isFinite(amount)) {
+      patch.contractValue = amount;
+      if (ctx.currencies?.includes(value[2].toUpperCase())) patch.contractValueCurrency = value[2].toUpperCase();
+    }
+  }
+  if (skipped.length) patch.skipped = skipped;
+
+  const team = text.match(/\bTeam:\s*(.+?)(?:\.\s*(?:Contract ID|contract value|reference WON|skip\b)|$)/is);
+  if (team) {
+    const rows = [];
+    const re = /(\d+)\s+(.+?)\s*\(([^)]+)\)/g;
+    let m;
+    while ((m = re.exec(team[1])) !== null) {
+      const count = Math.min(Math.max(parseInt(m[1], 10) || 1, 1), 100);
+      const role = m[2].trim().replace(/^and\s+/i, "");
+      const parts = m[3].split(",").map((p) => p.trim()).filter(Boolean);
+      if (parts.length < 3) continue;
+      const category = String(parts[0]).toUpperCase();
+      const country = parts[1];
+      const businessUnit = parts[parts.length - 1];
+      const workLocation = parts.length >= 4 ? parts.slice(2, -1).join(", ") : "";
+      rows.push({
+        role,
+        category,
+        country,
+        workLocation: country === "India" ? workLocation : "",
+        businessUnit,
+        count,
+      });
+    }
+    if (rows.length) patch.rows = rows;
+  }
+  return patch;
+}
+
 function mockTurn(text, ctx, draft) {
   const t = text.toLowerCase();
   const before = missingInputs(draft);
@@ -70,15 +141,30 @@ function mockTurn(text, ctx, draft) {
     patch.skipped = before.filter((m) => !m.required).map((m) => m.key);
   }
   if (draft.rows.length === 0) {
-    if (text.trim().length >= 12) {
+    const structured = parseStructuredPrompt(text, ctx);
+    const hasStructured =
+      structured.name || structured.startMonth || structured.endMonth || (structured.rows && structured.rows.length);
+    if (hasStructured) {
+      Object.assign(patch, structured);
+    } else if (text.trim().length >= 12) {
       patch.rows = draftFromText(text).map((r) => ({
         role: r.role,
         category: r.category,
         country: r.country,
         count: r.count,
       }));
+      Object.assign(patch, parseDates(text, ctx));
     }
   } else {
+    const structured = parseStructuredPrompt(text, ctx);
+    if (structured.name) patch.name = structured.name;
+    if (structured.startMonth) patch.startMonth = structured.startMonth;
+    if (structured.endMonth) patch.endMonth = structured.endMonth;
+    if (structured.contractId) patch.contractId = structured.contractId;
+    if (structured.contractValue !== undefined) patch.contractValue = structured.contractValue;
+    if (structured.contractValueCurrency) patch.contractValueCurrency = structured.contractValueCurrency;
+    if (structured.referenceWonNumber) patch.referenceWonNumber = structured.referenceWonNumber;
+    if (structured.skipped?.length) patch.skipped = structured.skipped;
     // India rows need a location the user has named.
     const loc = ctx.indiaLocations.find((l) => t.includes(l.toLowerCase()));
     if (loc && draft.rows.some((r) => r.country === "India" && !r.workLocation)) {
@@ -87,12 +173,12 @@ function mockTurn(text, ctx, draft) {
       );
     }
   }
-  Object.assign(patch, parseDates(text, ctx));
-  if (!draft.name && asked?.key === "name" && !patch.rows && text.trim().length <= 80) {
+  if (!patch.startMonth || !patch.endMonth) Object.assign(patch, parseDates(text, ctx));
+  if (!draft.name && !patch.name && asked?.key === "name" && !patch.rows && text.trim().length <= 80) {
     patch.name = text.trim();
   }
   const contract = text.match(/\bcontract(?:\s*id)?\s*[:#-]?\s*([A-Za-z0-9-]{3,})/i);
-  if (contract) patch.contractId = contract[1];
+  if (!patch.contractId && contract) patch.contractId = contract[1];
 
   const next = mergePatch(draft, patch, ctx);
   const missing = missingInputs(next);
@@ -102,7 +188,7 @@ function mockTurn(text, ctx, draft) {
   let reply;
   if (required.length) {
     reply =
-      (patch.rows ? "I drafted a starting team from your description (demo mode is keyword based). " : "") +
+      (patch.rows ? "I drafted a team from your description (demo mode). " : "") +
       "To build the WON I still need:\n" +
       required.map((m) => `- ${m.label}`).join("\n");
   } else if (optional.length && !patch.skipped) {

@@ -1,6 +1,6 @@
 # WON Builder UI (prototype)
 
-React + Vite front end for creating Work Order Numbers (WON) priced by grade.
+React + Vite + Material UI front end for creating Work Order Numbers (WON) priced by grade.
 It runs on sample data stored in the browser (localStorage). No backend yet.
 
 ## Run
@@ -11,6 +11,13 @@ npm run dev
 ```
 
 Open http://localhost:5173
+
+## Styling
+
+The UI uses Material UI (`@mui/material`). There is no hand-written CSS file. The colours, fonts and
+component defaults are set once in `src/theme.js`, and the shared page header is `src/ui/PageHeader.jsx`.
+After pulling this change run `npm install` (it adds MUI and regenerates `package-lock.json`; commit the
+new lock file so hosted builds stay reproducible).
 
 ## Pages
 
