@@ -88,8 +88,7 @@ export default function Calculation() {
   const won = wons.find((item) => item.id === id);
   const selectedCurrency = won?.contractValueCurrency || "INR";
   const latestVersion = won?.versions[won.versions.length - 1];
-  const savedPricing = latestVersion?.rateSnapshot;
-  const calculationRates = savedPricing?.dailyRates ? savedPricing : rateCard;
+  const calculationRates = rateCard;
   const currencyFactor = rateCard.currencyFactors.find(
     (factor) => factor.currency === selectedCurrency
   );

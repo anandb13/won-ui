@@ -1,7 +1,8 @@
 import { useStore } from "../lib/store.jsx";
+import RateCsvUpload from "../components/RateCsvUpload.jsx";
 
 export default function RateCard() {
-  const { rateCard, setRate, resetReferenceData } = useStore();
+  const { rateCard, setRate, setNetWorkDays, applyRates, resetReferenceData } = useStore();
 
   return (
     <div>
@@ -13,8 +14,10 @@ export default function RateCard() {
       </div>
       <p className="muted">
         Reference values from Rate_Card_and_Work_Days.xlsx. WON costs use daily INR rate × net work
-        days × headcount; each saved version keeps the reference values used to price it.
+        days × headcount. Changes here update calculations for new and existing work orders.
       </p>
+
+      <RateCsvUpload rateCard={rateCard} onApply={applyRates} />
 
       <h2>Daily cost by category and country (INR)</h2>
       <div className="card table-wrap">
@@ -71,9 +74,23 @@ export default function RateCard() {
               <tr key={month.month}>
                 <td>{new Date(`${month.month}-01T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</td>
                 <td className="num">{month.workDays}</td>
-                {rateCard.countries.map((country) => (
-                  <td className="num" key={country}>{month.workDays - (month.leaves[country] || 0)}</td>
-                ))}
+                {rateCard.countries.map((country) => {
+                  const netWorkDays = month.workDays - (month.leaves[country] || 0);
+                  return (
+                    <td className="num" key={country}>
+                      <input
+                        className="input num-input"
+                        type="number"
+                        min="0"
+                        max={month.workDays}
+                        step="1"
+                        aria-label={`${month.month} net workdays in ${country}`}
+                        value={netWorkDays}
+                        onChange={(e) => setNetWorkDays(month.month, country, e.target.value)}
+                      />
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

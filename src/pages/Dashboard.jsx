@@ -35,10 +35,10 @@ export default function Dashboard() {
       value: wons.filter((w) => w.status === s).length,
     }));
 
-    // Cost per category, using each version's own saved reference values.
+    // Cost per category, using the current reference values.
     const categoryTotals = {};
     for (const v of latest) {
-      const s = summarize(v.allocations, v.rateSnapshot, v.contingencyPct);
+      const s = summarize(v.allocations, rateCard, v.contingencyPct);
       for (const [category, cost] of Object.entries(s.byCategory))
         categoryTotals[category] = (categoryTotals[category] || 0) + cost;
     }

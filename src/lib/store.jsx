@@ -81,6 +81,39 @@ export function StoreProvider({ children }) {
         }));
       },
 
+      setNetWorkDays(month, country, netWorkDays) {
+        setState((s) => ({
+          ...s,
+          rateCard: {
+            ...s.rateCard,
+            calendar: s.rateCard.calendar.map((entry) => {
+              if (entry.month !== month) return entry;
+              const workDays = Number(entry.workDays) || 0;
+              const net = Math.min(workDays, Math.max(0, Number(netWorkDays) || 0));
+              return {
+                ...entry,
+                leaves: {
+                  ...entry.leaves,
+                  [country]: workDays - net,
+                },
+              };
+            }),
+          },
+        }));
+      },
+
+      // Applies many rate changes at once, e.g. from a CSV upload. changes: [{category, country, newRate}]
+      applyRates(changes) {
+        setState((s) => {
+          const dailyRates = { ...s.rateCard.dailyRates };
+          for (const { category, country, newRate } of changes) {
+            if (!dailyRates[category]) continue;
+            dailyRates[category] = { ...dailyRates[category], [country]: Number(newRate) || 0 };
+          }
+          return { ...s, rateCard: { ...s.rateCard, dailyRates } };
+        });
+      },
+
       resetReferenceData() {
         setState((s) => ({ ...s, rateCard: REFERENCE_DATA }));
       },
