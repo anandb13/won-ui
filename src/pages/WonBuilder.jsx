@@ -1,12 +1,82 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "../lib/store.jsx";
-import { categoryFor, inr, summarize, validate } from "../lib/cost.js";
-import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS, monthLabel } from "../data/reference.js";
+import { categoryFor, validate } from "../lib/cost.js";
+import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS } from "../data/reference.js";
 import WonBuilderAiAssist from "../components/WonBuilderAiAssist.jsx";
 
 let rowSeq = 0;
-const blankRow = (startMonth = "2026-07", months = 1) => ({
+
+function monthIndex(calendar, month) {
+  return calendar.findIndex((item) => item.month === month);
+}
+
+function clampMonthIndex(calendar, index) {
+  return Math.min(calendar.length - 1, Math.max(0, index));
+}
+
+function clampMonthToRange(calendar, month, rangeStart, rangeEnd) {
+  const idx = monthIndex(calendar, month);
+  const start = monthIndex(calendar, rangeStart);
+  const end = monthIndex(calendar, rangeEnd);
+  if (idx < 0 || start < 0 || end < 0) return rangeStart || calendar[0]?.month || month;
+  const lo = Math.min(start, end);
+  const hi = Math.max(start, end);
+  return calendar[Math.min(hi, Math.max(lo, idx))]?.month || rangeStart;
+}
+
+function monthsBetween(calendar, startMonth, endMonth) {
+  const start = monthIndex(calendar, startMonth);
+  const end = monthIndex(calendar, endMonth);
+  if (start < 0 || end < 0) return 1;
+  return Math.max(1, end - start + 1);
+}
+
+function endMonthFor(allocation, calendar) {
+  const start = monthIndex(calendar, allocation.startMonth || calendar[0]?.month);
+  if (start < 0) return calendar[0]?.month || "";
+  const months = Math.max(1, Math.ceil(Number(allocation.months) || 1));
+  return calendar[clampMonthIndex(calendar, start + months - 1)]?.month || allocation.startMonth || "";
+}
+
+function dateToMonth(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : "";
+}
+
+function monthToStartDate(month) {
+  return month ? `${month}-01` : "";
+}
+
+function monthToEndDate(month) {
+  if (!month) return "";
+  const [year, m] = month.split("-").map(Number);
+  if (!year || !m) return "";
+  const day = new Date(year, m, 0).getDate();
+  return `${month}-${String(day).padStart(2, "0")}`;
+}
+
+function calendarDateBounds(calendar) {
+  const start = calendar[0]?.month || "";
+  const end = calendar[calendar.length - 1]?.month || start;
+  return { min: monthToStartDate(start), max: monthToEndDate(end) };
+}
+
+function withAllocationDates(allocation, calendar, startMonth, endMonth) {
+  return {
+    ...allocation,
+    startMonth,
+    months: monthsBetween(calendar, startMonth, endMonth),
+  };
+}
+
+function clampAllocationToProject(allocation, calendar, projectStart, projectEnd) {
+  let startMonth = clampMonthToRange(calendar, allocation.startMonth || projectStart, projectStart, projectEnd);
+  let endMonth = clampMonthToRange(calendar, endMonthFor(allocation, calendar), projectStart, projectEnd);
+  if (monthIndex(calendar, endMonth) < monthIndex(calendar, startMonth)) endMonth = startMonth;
+  return withAllocationDates(allocation, calendar, startMonth, endMonth);
+}
+
+const blankRow = (startMonth = "2026-07", endMonth = startMonth, calendar = [{ month: startMonth }]) => ({
   id: `r${Date.now()}_${rowSeq++}`,
   role: "",
   category: "ASE",
@@ -15,8 +85,19 @@ const blankRow = (startMonth = "2026-07", months = 1) => ({
   businessUnit: "",
   startMonth,
   count: 1,
-  months,
+  months: monthsBetween(calendar, startMonth, endMonth),
 });
+
+function expandAllocations(allocations) {
+  return allocations.flatMap((allocation) => {
+    const count = Math.min(Math.max(Math.round(Number(allocation.count)) || 1, 1), 100);
+    return Array.from({ length: count }, (_, i) => ({
+      ...allocation,
+      id: count === 1 ? allocation.id : `${allocation.id}_${i + 1}`,
+      count: 1,
+    }));
+  });
+}
 
 function datesFromAllocations(allocations, calendar) {
   const scheduled = allocations
@@ -69,14 +150,24 @@ function Builder({ id }) {
           contractValueCurrency: existing.contractValueCurrency || "INR",
           ...initialDates,
           status: existing.status,
-          allocations: savedAllocations.map((allocation) => ({
-            ...allocation,
-            category: categoryFor(allocation) || "ASE",
-            country: allocation.country || "India",
-            workLocation: allocation.workLocation || "",
-            businessUnit: allocation.businessUnit || "",
-            startMonth: allocation.startMonth || initialDates.startMonth,
-          })),
+          allocations: expandAllocations(
+            savedAllocations.map((allocation) =>
+              clampAllocationToProject(
+                {
+                  ...allocation,
+                  category: categoryFor(allocation) || "ASE",
+                  country: allocation.country || "India",
+                  workLocation: allocation.workLocation || "",
+                  businessUnit: allocation.businessUnit || "",
+                  startMonth: allocation.startMonth || initialDates.startMonth,
+                  months: Math.max(1, Math.ceil(Number(allocation.months) || initialDuration)),
+                },
+                rateCard.calendar,
+                initialDates.startMonth,
+                initialDates.endMonth
+              )
+            )
+          ),
         }
       : {
           id: null,
@@ -87,15 +178,11 @@ function Builder({ id }) {
           contractValueCurrency: "INR",
           ...initialDates,
           status: "Draft",
-          allocations: [blankRow(initialDates.startMonth, initialDuration)],
+          allocations: [blankRow(initialDates.startMonth, initialDates.endMonth, rateCard.calendar)],
         }
   );
   const [showErrors, setShowErrors] = useState(false);
 
-  const totals = useMemo(
-    () => summarize(form.allocations, rateCard, 0),
-    [form.allocations, rateCard]
-  );
   const issues = useMemo(
     () => validate(form.allocations, rateCard, 0),
     [form.allocations, rateCard]
@@ -117,17 +204,53 @@ function Builder({ id }) {
     set({
       allocations: form.allocations.map((a) => (a.id === rowId ? { ...a, ...patch } : a)),
     });
+  const calendarBounds = useMemo(() => calendarDateBounds(rateCard.calendar), [rateCard.calendar]);
+  const projectBounds = useMemo(
+    () => ({
+      min: monthToStartDate(form.startMonth),
+      max: monthToEndDate(form.endMonth),
+    }),
+    [form.startMonth, form.endMonth]
+  );
+
+  const setAllocationMonth = (rowId, field, value) => {
+    const monthValue = dateToMonth(value) || value;
+    set({
+      allocations: form.allocations.map((allocation) => {
+        if (allocation.id !== rowId) return allocation;
+        let startMonth = field === "startMonth" ? monthValue : allocation.startMonth;
+        let endMonth = field === "endMonth" ? monthValue : endMonthFor(allocation, rateCard.calendar);
+        startMonth = clampMonthToRange(rateCard.calendar, startMonth, form.startMonth, form.endMonth);
+        endMonth = clampMonthToRange(rateCard.calendar, endMonth, form.startMonth, form.endMonth);
+        let startIndex = monthIndex(rateCard.calendar, startMonth);
+        let endIndex = monthIndex(rateCard.calendar, endMonth);
+        if (startIndex < 0 || endIndex < 0) return allocation;
+        if (startIndex > endIndex) {
+          if (field === "startMonth") {
+            endMonth = startMonth;
+          } else {
+            startMonth = endMonth;
+          }
+        }
+        return withAllocationDates(allocation, rateCard.calendar, startMonth, endMonth);
+      }),
+    });
+  };
   const addRow = () => {
-    const start = rateCard.calendar.findIndex((month) => month.month === form.startMonth);
-    const end = rateCard.calendar.findIndex((month) => month.month === form.endMonth);
-    set({ allocations: [...form.allocations, blankRow(form.startMonth, end - start + 1)] });
+    set({
+      allocations: [
+        ...form.allocations,
+        blankRow(form.startMonth, form.endMonth, rateCard.calendar),
+      ],
+    });
   };
   const removeRow = (rowId) =>
     set({ allocations: form.allocations.filter((a) => a.id !== rowId) });
 
   function setProjectMonth(field, value) {
-    let startMonth = field === "startMonth" ? value : form.startMonth;
-    let endMonth = field === "endMonth" ? value : form.endMonth;
+    const monthValue = dateToMonth(value) || value;
+    let startMonth = field === "startMonth" ? monthValue : form.startMonth;
+    let endMonth = field === "endMonth" ? monthValue : form.endMonth;
     let startIndex = rateCard.calendar.findIndex((month) => month.month === startMonth);
     let endIndex = rateCard.calendar.findIndex((month) => month.month === endMonth);
     if (startIndex > endIndex) {
@@ -139,15 +262,12 @@ function Builder({ id }) {
         startIndex = endIndex;
       }
     }
-    const months = endIndex - startIndex + 1;
     set({
       startMonth,
       endMonth,
-      allocations: form.allocations.map((allocation) => ({
-        ...allocation,
-        startMonth,
-        months,
-      })),
+      allocations: form.allocations.map((allocation) =>
+        clampAllocationToProject(allocation, rateCard.calendar, startMonth, endMonth)
+      ),
     });
   }
 
@@ -166,7 +286,6 @@ function Builder({ id }) {
     navigate("/won", { replace: true });
   }
 
-  const maxCategoryCost = Math.max(1, ...Object.values(totals.byCategory));
   const hasErrors = issues.some((i) => i.level === "error");
 
   return (
@@ -188,7 +307,7 @@ function Builder({ id }) {
 
       {showErrors && !form.name.trim() && <div className="banner error">Enter a WON name.</div>}
 
-      <div className="builder">
+      <div className="builder builder-single">
         <div className="builder-main">
           <div className="card pad">
             <div className="form-grid">
@@ -245,27 +364,25 @@ function Builder({ id }) {
               </label>
               <label>
                 Start month
-                <select
+                <input
                   className="input"
-                  value={form.startMonth}
+                  type="date"
+                  value={monthToStartDate(form.startMonth)}
+                  min={calendarBounds.min}
+                  max={calendarBounds.max}
                   onChange={(e) => setProjectMonth("startMonth", e.target.value)}
-                >
-                  {rateCard.calendar.map((month) => (
-                    <option key={month.month} value={month.month}>{monthLabel(month.month)}</option>
-                  ))}
-                </select>
+                />
               </label>
               <label>
                 End month
-                <select
+                <input
                   className="input"
-                  value={form.endMonth}
+                  type="date"
+                  value={monthToEndDate(form.endMonth)}
+                  min={calendarBounds.min}
+                  max={calendarBounds.max}
                   onChange={(e) => setProjectMonth("endMonth", e.target.value)}
-                >
-                  {rateCard.calendar.map((month) => (
-                    <option key={month.month} value={month.month}>{monthLabel(month.month)}</option>
-                  ))}
-                </select>
+                />
               </label>
             </div>
           </div>
@@ -286,7 +403,8 @@ function Builder({ id }) {
                     <th>Country</th>
                     <th>Work location</th>
                     <th>Business Unit</th>
-                    <th className="num">Headcount</th>
+                    <th>Start month</th>
+                    <th>End month</th>
                     <th />
                   </tr>
                 </thead>
@@ -353,13 +471,35 @@ function Builder({ id }) {
                           ))}
                         </select>
                       </td>
-                      <td className="num">
+                      <td>
                         <input
-                          className="input num-input"
-                          type="number"
-                          min="0"
-                          value={a.count}
-                          onChange={(e) => setRow(a.id, { count: e.target.value })}
+                          className="input"
+                          type="date"
+                          value={monthToStartDate(
+                            clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth)
+                          )}
+                          min={projectBounds.min}
+                          max={projectBounds.max}
+                          aria-label={`Start month for ${a.role || "allocation row"}`}
+                          onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="input"
+                          type="date"
+                          value={monthToEndDate(
+                            clampMonthToRange(
+                              rateCard.calendar,
+                              endMonthFor(a, rateCard.calendar),
+                              form.startMonth,
+                              form.endMonth
+                            )
+                          )}
+                          min={projectBounds.min}
+                          max={projectBounds.max}
+                          aria-label={`End month for ${a.role || "allocation row"}`}
+                          onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
                         />
                       </td>
                       <td>
@@ -376,13 +516,27 @@ function Builder({ id }) {
                   ))}
                   {form.allocations.length === 0 && (
                     <tr>
-                        <td colSpan={7} className="empty">
+                      <td colSpan={8} className="empty">
                         No rows. Add one, or use AI assist.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="allocation-checks">
+              <h3>Checks</h3>
+              {issues.length === 0 && <p className="muted small">All checks pass.</p>}
+              <ul className="issues">
+                {issues.map((i, idx) => (
+                  <li key={idx} className={i.level}>
+                    {i.text}
+                  </li>
+                ))}
+              </ul>
+              {hasErrors && showErrors && (
+                <p className="small error-text">Fix the errors above before saving.</p>
+              )}
             </div>
           </div>
 
@@ -395,58 +549,6 @@ function Builder({ id }) {
           />
 
         </div>
-
-        <aside className="builder-side">
-          <div className="card pad sticky">
-            <h2>Cost summary</h2>
-            <dl className="summary">
-              <div>
-                <dt>Effort</dt>
-                <dd>{totals.effort.toLocaleString("en-IN")} person-months</dd>
-              </div>
-              <div>
-                <dt>Subtotal</dt>
-                <dd>{inr(totals.subtotal)}</dd>
-              </div>
-              <div className="grand">
-                <dt>Total</dt>
-                <dd>{inr(totals.total)}</dd>
-              </div>
-            </dl>
-
-            <h3>By category</h3>
-            <div className="bars">
-              {categories.map((category) => {
-                const v = totals.byCategory[category.id] || 0;
-                return (
-                  <div className="bar-row" key={category.id}>
-                    <span className="bar-label">{category.id}</span>
-                    <span className="bar-track">
-                      <span className="bar-fill" style={{ width: `${(v / maxCategoryCost) * 100}%` }} />
-                    </span>
-                    <span className="bar-value">{inr(v)}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <h3>Checks</h3>
-            {issues.length === 0 && <p className="muted small">All checks pass.</p>}
-            <ul className="issues">
-              {issues.map((i, idx) => (
-                <li key={idx} className={i.level}>
-                  {i.text}
-                </li>
-              ))}
-            </ul>
-            {hasErrors && showErrors && (
-              <p className="small error-text">Fix the errors above before saving.</p>
-            )}
-            <p className="muted small">
-              Priced using the current country rates and work calendar. Saved versions keep their own inputs.
-            </p>
-          </div>
-        </aside>
       </div>
     </div>
   );

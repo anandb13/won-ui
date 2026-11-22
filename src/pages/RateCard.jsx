@@ -14,7 +14,7 @@ export default function RateCard() {
       </div>
       <p className="muted">
         Reference values from Rate_Card_and_Work_Days.xlsx. WON costs use daily INR rate × net work
-        days × headcount. Changes here update calculations for new and existing work orders.
+        days × number of resources. Changes here update calculations for new and existing work orders.
       </p>
 
       <RateCsvUpload rateCard={rateCard} onApply={applyRates} />

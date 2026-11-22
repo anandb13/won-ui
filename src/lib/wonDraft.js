@@ -28,19 +28,25 @@ export function normalizeRows(rows, ctx) {
   const countries = new Set(ctx.countries);
   const locations = new Set(ctx.indiaLocations);
   const units = new Set(ctx.businessUnits);
-  return rows
-    .filter((r) => r && typeof r.role === "string" && r.role.trim() && cats.has(String(r.category).toUpperCase()))
-    .map((r) => {
-      const country = countries.has(r.country) ? r.country : "India";
-      return {
-        role: r.role.trim().slice(0, 80),
-        category: String(r.category).toUpperCase(),
-        country,
-        workLocation: country === "India" && locations.has(r.workLocation) ? r.workLocation : "",
-        businessUnit: units.has(r.businessUnit) ? r.businessUnit : "",
-        count: Math.min(Math.max(Math.round(Number(r.count)) || 1, 1), 100),
-      };
-    });
+  return rows.flatMap((r) => {
+    if (!r || typeof r.role !== "string" || !r.role.trim() || !cats.has(String(r.category).toUpperCase())) {
+      return [];
+    }
+    const country = countries.has(r.country) ? r.country : "India";
+    const count = Math.min(Math.max(Math.round(Number(r.count)) || 1, 1), 100);
+    const startMonth = ctx.months?.includes(r.startMonth) ? r.startMonth : "";
+    const months = Math.max(1, Math.ceil(Number(r.months) || 1));
+    const base = {
+      role: r.role.trim().slice(0, 80),
+      category: String(r.category).toUpperCase(),
+      country,
+      workLocation: country === "India" && locations.has(r.workLocation) ? r.workLocation : "",
+      businessUnit: units.has(r.businessUnit) ? r.businessUnit : "",
+      ...(startMonth ? { startMonth, months } : {}),
+      count: 1,
+    };
+    return Array.from({ length: count }, () => ({ ...base }));
+  });
 }
 
 // Clamp a draft (from the model or the mock) to values the app supports.
@@ -86,7 +92,7 @@ export function missingInputs(d) {
   if (!d.startMonth || !d.endMonth)
     out.push({ key: "dates", label: "Start and end month", required: true });
   if (d.rows.length === 0)
-    out.push({ key: "rows", label: "Team: roles, grade, headcount, country", required: true });
+    out.push({ key: "rows", label: "Team: roles, grade, country", required: true });
   const noLoc = d.rows.filter((r) => r.country === "India" && !r.workLocation);
   if (noLoc.length)
     out.push({

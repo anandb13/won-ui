@@ -4,6 +4,13 @@ import { inr } from "../lib/cost.js";
 import { monthLabel } from "../data/reference.js";
 import { isReady, missingInputs, monthCount } from "../lib/wonDraft.js";
 
+function rowEndMonth(context, row, fallbackEnd) {
+  const start = context.months.indexOf(row.startMonth || "");
+  if (start < 0) return fallbackEnd || "";
+  const months = Math.max(1, Math.ceil(Number(row.months) || 1));
+  return context.months[Math.min(context.months.length - 1, start + months - 1)] || fallbackEnd || row.startMonth || "";
+}
+
 const STARTERS = [
   "Create a WON named Data Platform Migration, from Oct 2026 to Mar 2027. Team: 1 Project Manager (CONS, India, Bangalore, D&A), 1 Data Architect (CONS, UK, D&A), 3 Data Engineers (AST, India, Bangalore, D&A), 4 Data Engineers (ASE, India, Hyderabad, D&A), 2 QA Engineers (ASE, India, Hyderabad, D&A). Contract ID C-2210, contract value 120000 GBP, reference WON REF-3105.",
   "Create a WON named Support Desk Expansion, from Jan 2027 to Jun 2027. Team: 1 Delivery Lead (BPO6, India, Chennai, BPS), 2 Team Leads (BPO5, India, Chennai, BPS), 8 Support Agents (BPO4, India, Chennai, BPS), 6 Support Agents (BPO3, India, Kochi, BPS). Contract ID C-3377, contract value 3500000 INR, skip the reference WON number.",
@@ -201,7 +208,7 @@ function DraftPanel({ draft, context, total, built, onBuild }) {
   const required = missing.filter((m) => m.required);
   const optional = missing.filter((m) => !m.required);
   const months = monthCount(context, draft);
-  const heads = draft.rows.reduce((s, r) => s + r.count, 0);
+  const heads = draft.rows.length;
   const ready = isReady(draft);
 
   return (
@@ -233,26 +240,31 @@ function DraftPanel({ draft, context, total, built, onBuild }) {
                 <th>Role</th>
                 <th>Category</th>
                 <th>Country</th>
-                <th className="num">Count</th>
+                <th>Start</th>
+                <th>End</th>
               </tr>
             </thead>
             <tbody>
-              {draft.rows.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.role}</td>
-                  <td>{r.category}</td>
-                  <td>
-                    {r.country}
-                    {r.workLocation ? ` · ${r.workLocation}` : ""}
-                  </td>
-                  <td className="num">{r.count}</td>
-                </tr>
-              ))}
+              {draft.rows.map((r, i) => {
+                const start = r.startMonth || draft.startMonth;
+                const end = rowEndMonth(context, { ...r, startMonth: start }, draft.endMonth);
+                return (
+                  <tr key={i}>
+                    <td>{r.role}</td>
+                    <td>{r.category}</td>
+                    <td>
+                      {r.country}
+                      {r.workLocation ? ` · ${r.workLocation}` : ""}
+                    </td>
+                    <td>{start ? monthLabel(start) : "not set"}</td>
+                    <td>{end ? monthLabel(end) : "not set"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <div className="muted small chat-total">
-            {heads} people{months ? ` x ${months} month${months === 1 ? "" : "s"}` : ""} ·{" "}
-            {total == null ? "estimate once the period is set" : `est. ${inr(total)}`}
+            {heads} people · {total == null ? "estimate once the period is set" : `est. ${inr(total)}`}
           </div>
         </>
       )}

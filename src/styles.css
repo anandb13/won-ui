@@ -477,6 +477,9 @@ tr:last-child td {
   gap: 16px;
   align-items: start;
 }
+.builder.builder-single {
+  grid-template-columns: 1fr;
+}
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -517,6 +520,9 @@ tr:last-child td {
 }
 .summary .grand dt {
   color: var(--text);
+}
+.allocation-checks {
+  margin-top: 14px;
 }
 .issues {
   list-style: none;

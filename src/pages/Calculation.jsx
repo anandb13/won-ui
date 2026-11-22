@@ -4,6 +4,24 @@ import { useStore } from "../lib/store.jsx";
 import { categoryFor, inr, lineCost } from "../lib/cost.js";
 import { monthLabel } from "../data/reference.js";
 
+function expandAllocations(allocations) {
+  return allocations.flatMap((allocation) => {
+    const count = Math.min(Math.max(Math.round(Number(allocation.count)) || 1, 1), 100);
+    return Array.from({ length: count }, (_, i) => ({
+      ...allocation,
+      id: count === 1 ? allocation.id : `${allocation.id}_${i + 1}`,
+      count: 1,
+    }));
+  });
+}
+
+function allocationEndMonth(allocation, calendar) {
+  const start = calendar.findIndex((month) => month.month === allocation.startMonth);
+  if (start < 0) return "";
+  const months = Math.max(1, Math.ceil(Number(allocation.months) || 1));
+  return calendar[Math.min(calendar.length - 1, start + months - 1)]?.month || allocation.startMonth || "";
+}
+
 const currencyLocales = {
   INR: "en-IN",
   USD: "en-US",
@@ -95,7 +113,7 @@ export default function Calculation() {
   const xFactor = currencyFactor?.[
     factorSource === "rt" ? "rtFactor" : "ultimatixFactor"
   ];
-  const allocations = latestVersion?.allocations || [];
+  const allocations = expandAllocations(latestVersion?.allocations || []);
 
   if (!won) {
     return (
@@ -193,7 +211,8 @@ export default function Calculation() {
               <th>Location</th>
               <th>Work Location</th>
               <th>Business Unit</th>
-              <th className="num">Number of resources</th>
+              <th>Start month</th>
+              <th>End month</th>
             </tr>
           </thead>
           <tbody>
@@ -204,12 +223,17 @@ export default function Calculation() {
                 <td>{allocation.country || "-"}</td>
                 <td>{allocation.workLocation || "-"}</td>
                 <td>{allocation.businessUnit || "-"}</td>
-                <td className="num">{allocation.count}</td>
+                <td>{allocation.startMonth ? monthLabel(allocation.startMonth) : "-"}</td>
+                <td>
+                  {allocationEndMonth(allocation, calculationRates.calendar)
+                    ? monthLabel(allocationEndMonth(allocation, calculationRates.calendar))
+                    : "-"}
+                </td>
               </tr>
             ))}
             {allocations.length === 0 && (
               <tr>
-                <td className="empty" colSpan={6}>No resource allocations.</td>
+                <td className="empty" colSpan={7}>No resource allocations.</td>
               </tr>
             )}
           </tbody>
@@ -246,7 +270,6 @@ export default function Calculation() {
               <th>Location</th>
               <th>Work Location</th>
               <th>Business Unit</th>
-              <th>Number of resources</th>
               <th>Cost per day in INR</th>
               <th>Currency</th>
               <th>X factor</th>
@@ -271,7 +294,6 @@ export default function Calculation() {
                   <td>{allocation.country || "-"}</td>
                   <td>{allocation.workLocation || "-"}</td>
                   <td>{allocation.businessUnit || "-"}</td>
-                  <td className="num">{allocation.count}</td>
                   <td className="num">{dailyRateInr(allocation, calculationRates)}</td>
                   <td>{selectedCurrency}</td>
                   <td className="num">{xFactor ?? "-"}</td>
@@ -297,7 +319,7 @@ export default function Calculation() {
             })}
             {allocations.length === 0 && (
               <tr>
-                <td className="empty" colSpan={13}>No resource allocations.</td>
+                <td className="empty" colSpan={12}>No resource allocations.</td>
               </tr>
             )}
           </tbody>

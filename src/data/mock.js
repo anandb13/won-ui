@@ -37,9 +37,12 @@ export const SEED_WONS = [
     [
       { id: "a1", role: "Project Manager", category: "CONS", country: "India", startMonth: "2026-07", count: 1, months: 6 },
       { id: "a2", role: "Solution Architect", category: "CONS", country: "US", startMonth: "2026-07", count: 1, months: 3 },
-      { id: "a3", role: "Senior Engineer", category: "AST", country: "India", startMonth: "2026-07", count: 2, months: 6 },
-      { id: "a4", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 3, months: 6 },
-      { id: "a5", role: "QA Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 5 },
+      { id: "a3", role: "Senior Engineer", category: "AST", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "a4", role: "Senior Engineer", category: "AST", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "a5", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "a6", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "a7", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "a8", role: "QA Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 5 },
     ],
     "2026-09-12T10:00:00.000Z",
     "B-2026-000001"
@@ -53,9 +56,13 @@ export const SEED_WONS = [
     12,
     [
       { id: "b1", role: "Project Manager", category: "CONS", country: "Canada", startMonth: "2026-07", count: 1, months: 9 },
-      { id: "b2", role: "Data Engineer", category: "ITA", country: "Canada", startMonth: "2026-07", count: 3, months: 9 },
-      { id: "b3", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 2, months: 9 },
-      { id: "b4", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 2, months: 6 },
+      { id: "b2", role: "Data Engineer", category: "ITA", country: "Canada", startMonth: "2026-07", count: 1, months: 9 },
+      { id: "b3", role: "Data Engineer", category: "ITA", country: "Canada", startMonth: "2026-07", count: 1, months: 9 },
+      { id: "b4", role: "Data Engineer", category: "ITA", country: "Canada", startMonth: "2026-07", count: 1, months: 9 },
+      { id: "b5", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 9 },
+      { id: "b6", role: "Engineer", category: "ASE", country: "India", startMonth: "2026-07", count: 1, months: 9 },
+      { id: "b7", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 1, months: 6 },
+      { id: "b8", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 1, months: 6 },
     ],
     "2026-10-03T09:30:00.000Z",
     "B-2026-000002"
@@ -69,8 +76,9 @@ export const SEED_WONS = [
     8,
     [
       { id: "c1", role: "Lead Engineer", category: "ASC", country: "Brazil", startMonth: "2026-07", count: 1, months: 4 },
-      { id: "c2", role: "Mobile Engineer", category: "ITA", country: "Brazil", startMonth: "2026-07", count: 2, months: 4 },
-      { id: "c3", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 1, months: 4 },
+      { id: "c2", role: "Mobile Engineer", category: "ITA", country: "Brazil", startMonth: "2026-07", count: 1, months: 4 },
+      { id: "c3", role: "Mobile Engineer", category: "ITA", country: "Brazil", startMonth: "2026-07", count: 1, months: 4 },
+      { id: "c4", role: "Associate Engineer", category: "TRAINEE", country: "India", startMonth: "2026-07", count: 1, months: 4 },
     ],
     "2026-11-05T14:15:00.000Z",
     "B-2026-000003"
