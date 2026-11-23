@@ -26,8 +26,8 @@ import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS } from "../data/reference.js";
 import WonBuilderAiAssist from "../components/WonBuilderAiAssist.jsx";
 import PageHeader from "../ui/PageHeader.jsx";
 
-// slotProps shared by the project start/end date fields.
-const dateSlots = (min, max) => ({
+// slotProps shared by the project start/end month fields.
+const monthSlots = (min, max) => ({
   inputLabel: { shrink: true },
   htmlInput: { min, max },
 });
@@ -82,10 +82,10 @@ function monthToEndDate(month) {
   return `${month}-${String(day).padStart(2, "0")}`;
 }
 
-function calendarDateBounds(calendar) {
+function calendarMonthBounds(calendar) {
   const start = calendar[0]?.month || "";
   const end = calendar[calendar.length - 1]?.month || start;
-  return { min: monthToStartDate(start), max: monthToEndDate(end) };
+  return { min: start, max: end };
 }
 
 function withAllocationDates(allocation, calendar, startMonth, endMonth) {
@@ -160,7 +160,7 @@ function Builder({ id }) {
         startMonth: existing.startMonth || datesFromAllocations(savedAllocations, rateCard.calendar).startMonth,
         endMonth: existing.endMonth || datesFromAllocations(savedAllocations, rateCard.calendar).endMonth,
       }
-    : { startMonth: rateCard.calendar[0].month, endMonth: rateCard.calendar[0].month };
+    : { startMonth: rateCard.calendar[0].month, endMonth: rateCard.calendar[11].month };
   const initialDuration =
     rateCard.calendar.findIndex((month) => month.month === initialDates.endMonth) -
       rateCard.calendar.findIndex((month) => month.month === initialDates.startMonth) +
@@ -233,11 +233,11 @@ function Builder({ id }) {
     set({
       allocations: form.allocations.map((a) => (a.id === rowId ? { ...a, ...patch } : a)),
     });
-  const calendarBounds = useMemo(() => calendarDateBounds(rateCard.calendar), [rateCard.calendar]);
+  const calendarBounds = useMemo(() => calendarMonthBounds(rateCard.calendar), [rateCard.calendar]);
   const projectBounds = useMemo(
     () => ({
-      min: monthToStartDate(form.startMonth),
-      max: monthToEndDate(form.endMonth),
+      min: form.startMonth,
+      max: form.endMonth,
     }),
     [form.startMonth, form.endMonth]
   );
@@ -333,7 +333,7 @@ function Builder({ id }) {
 
   const hasErrors = issues.some((i) => i.level === "error");
   const selectProps = { select: { displayEmpty: true } };
-  const projectDateSlots = dateSlots(calendarBounds.min, calendarBounds.max);
+  const projectMonthSlots = monthSlots(calendarBounds.min, calendarBounds.max);
 
   return (
     <Box>
@@ -408,18 +408,18 @@ function Builder({ id }) {
                 ))}
               </TextField>
               <TextField
-                label="Start date"
-                type="date"
-                value={monthToStartDate(form.startMonth)}
+                label="Start month"
+                type="month"
+                value={form.startMonth || ""}
                 onChange={(e) => setProjectMonth("startMonth", e.target.value)}
-                slotProps={projectDateSlots}
+                slotProps={projectMonthSlots}
               />
               <TextField
-                label="End date"
-                type="date"
-                value={monthToEndDate(form.endMonth)}
+                label="End month"
+                type="month"
+                value={form.endMonth || ""}
                 onChange={(e) => setProjectMonth("endMonth", e.target.value)}
-                slotProps={projectDateSlots}
+                slotProps={projectMonthSlots}
               />
             </Box>
           </CardContent>
@@ -451,8 +451,8 @@ function Builder({ id }) {
                       <TableCell sx={{ width: "11%" }}>Country</TableCell>
                       <TableCell sx={{ width: "15%" }}>Work location</TableCell>
                       <TableCell sx={{ width: "14%" }}>Business Unit</TableCell>
-                      <TableCell sx={{ width: "13%" }}>Start date</TableCell>
-                      <TableCell sx={{ width: "13%" }}>End date</TableCell>
+                      <TableCell sx={{ width: "13%" }}>Start month</TableCell>
+                      <TableCell sx={{ width: "13%" }}>End month</TableCell>
                       <TableCell sx={{ width: 48, px: 0.5 }} />
                     </TableRow>
                   </TableHead>
@@ -542,39 +542,37 @@ function Builder({ id }) {
                         </TableCell>
                         <TableCell>
                           <TextField
-                            type="date"
+                            type="month"
                             fullWidth
-                            value={monthToStartDate(
-                              clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth)
-                            )}
+                            value={clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth) || ""}
                             onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
                             slotProps={{
                               htmlInput: {
                                 min: projectBounds.min,
                                 max: projectBounds.max,
-                                "aria-label": `Start date for ${a.role || "allocation row"}`,
+                                "aria-label": `Start month for ${a.role || "allocation row"}`,
                               },
                             }}
                           />
                         </TableCell>
                         <TableCell>
                           <TextField
-                            type="date"
+                            type="month"
                             fullWidth
-                            value={monthToEndDate(
+                            value={
                               clampMonthToRange(
                                 rateCard.calendar,
                                 endMonthFor(a, rateCard.calendar),
                                 form.startMonth,
                                 form.endMonth
-                              )
-                            )}
+                              ) || ""
+                            }
                             onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
                             slotProps={{
                               htmlInput: {
                                 min: projectBounds.min,
                                 max: projectBounds.max,
-                                "aria-label": `End date for ${a.role || "allocation row"}`,
+                                "aria-label": `End month for ${a.role || "allocation row"}`,
                               },
                             }}
                           />

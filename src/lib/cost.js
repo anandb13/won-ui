@@ -79,7 +79,7 @@ export function validate(allocations, pricing, contingencyPct) {
     if (a.country === "India" && !a.workLocation)
       msgs.push({ level: "error", text: `Row ${i + 1}: choose an Indian work location.` });
     if (pricing.calendar && !pricing.calendar.some((month) => month.month === a.startMonth))
-      msgs.push({ level: "error", text: `Row ${i + 1}: choose a valid start date.` });
+      msgs.push({ level: "error", text: `Row ${i + 1}: choose a valid start month.` });
     if (pricing.calendar) {
       const startIndex = pricing.calendar.findIndex((month) => month.month === a.startMonth);
       if (startIndex >= 0 && startIndex + Number(a.months) > pricing.calendar.length)

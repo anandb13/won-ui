@@ -248,8 +248,8 @@ export default function Calculation() {
                 <TableCell>Location</TableCell>
                 <TableCell>Work Location</TableCell>
                 <TableCell>Business Unit</TableCell>
-                <TableCell>Start date</TableCell>
-                <TableCell>End date</TableCell>
+                <TableCell>Start month</TableCell>
+                <TableCell>End month</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

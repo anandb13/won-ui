@@ -90,7 +90,7 @@ export function missingInputs(d) {
   const out = [];
   if (!d.name) out.push({ key: "name", label: "WON name", required: true });
   if (!d.startMonth || !d.endMonth)
-    out.push({ key: "dates", label: "Start and end date", required: true });
+    out.push({ key: "dates", label: "Start and end month", required: true });
   if (d.rows.length === 0)
     out.push({ key: "rows", label: "Team: roles, grade, country", required: true });
   const noLoc = d.rows.filter((r) => r.country === "India" && !r.workLocation);

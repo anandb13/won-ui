@@ -62,7 +62,11 @@ export default function WonBuilderAiAssist({ form, existing, rateCard, setForm, 
     return d.rows.map((row) => {
       const rawStart = aiContext.months.includes(row.startMonth) ? row.startMonth : projectStart;
       let startMonth = clampToDraftRange(rawStart, projectStart, projectEnd);
-      let endMonth = clampToDraftRange(rowEndMonth({ ...row, startMonth: rawStart }) || projectEnd, projectStart, projectEnd);
+      const rowHasDuration = row.startMonth || row.months != null;
+      const rawEnd = rowHasDuration
+        ? rowEndMonth({ ...row, startMonth: rawStart }) || projectEnd
+        : projectEnd;
+      let endMonth = clampToDraftRange(rawEnd, projectStart, projectEnd);
       if (monthIndex(endMonth) < monthIndex(startMonth)) endMonth = startMonth;
       const months = Math.max(1, monthIndex(endMonth) - monthIndex(startMonth) + 1 || defaultMonths);
       return {
@@ -81,16 +85,17 @@ export default function WonBuilderAiAssist({ form, existing, rateCard, setForm, 
       : null;
 
   const buildFromDraft = (d) =>
-    setForm({
+    setForm((prev) => ({
+      ...prev,
       name: d.name,
       referenceWonNumber: d.referenceWonNumber,
       contractId: d.contractId,
       contractValue: d.contractValue,
       contractValueCurrency: d.contractValueCurrency,
-      startMonth: d.startMonth,
-      endMonth: d.endMonth,
+      startMonth: d.startMonth || prev.startMonth,
+      endMonth: d.endMonth || prev.endMonth,
       allocations: draftAllocations(d),
-    });
+    }));
 
   return (
     <AiAssist
