@@ -301,21 +301,21 @@ export default function Calculation() {
       )}
       <Card>
         <TableContainer>
-          <Table>
+          <Table sx={{ "& th, & td": { px: 1.5, py: 1.25 } }}>
             <TableHead>
               <TableRow>
-                <TableCell>Grade</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Work Location</TableCell>
-                <TableCell>Business Unit</TableCell>
-                <TableCell align="right">Cost per day in INR</TableCell>
-                <TableCell>Currency</TableCell>
-                <TableCell align="right">X factor</TableCell>
-                <TableCell align="right">Total Cost (CB) in INR</TableCell>
-                <TableCell align="right">{`Total Cost (CB) in ${selectedCurrency}`}</TableCell>
-                <TableCell align="right">PV in INR</TableCell>
-                <TableCell align="right">{`PV in ${selectedCurrency}`}</TableCell>
-                <TableCell align="right">Profitability</TableCell>
+                <TableCell sx={{ width: "12%" }}>Grade</TableCell>
+                <TableCell sx={{ width: "7%" }}>Location</TableCell>
+                <TableCell sx={{ width: "10%" }}>Work Location</TableCell>
+                <TableCell sx={{ width: "8%" }}>Business Unit</TableCell>
+                <TableCell align="center" sx={{ width: "10%", whiteSpace: "nowrap" }}>Cost per day in INR</TableCell>
+                <TableCell align="center" sx={{ width: "6%" }}>Currency</TableCell>
+                <TableCell align="center" sx={{ width: "7%", whiteSpace: "nowrap" }}>X factor</TableCell>
+                <TableCell align="center" sx={{ width: "10%", whiteSpace: "nowrap" }}>Total Cost (CB) in INR</TableCell>
+                <TableCell align="center" sx={{ width: "10%", whiteSpace: "nowrap" }}>{`Total Cost (CB) in ${selectedCurrency}`}</TableCell>
+                <TableCell align="center" sx={{ width: "8%", whiteSpace: "nowrap" }}>PV in INR</TableCell>
+                <TableCell align="center" sx={{ width: "8%", whiteSpace: "nowrap" }}>{`PV in ${selectedCurrency}`}</TableCell>
+                <TableCell align="center" sx={{ width: "8%", whiteSpace: "nowrap" }}>Profitability</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -331,23 +331,23 @@ export default function Calculation() {
                     <TableCell>{gradeLabel(allocation, rateCard.roles)}</TableCell>
                     <TableCell>{allocation.country || "-"}</TableCell>
                     <TableCell>{allocation.workLocation || "-"}</TableCell>
-                    <TableCell>{allocation.businessUnit || "-"}</TableCell>
-                    <TableCell align="right">{dailyRateInr(allocation, calculationRates)}</TableCell>
-                    <TableCell>{selectedCurrency}</TableCell>
-                    <TableCell align="right">{xFactor ?? "-"}</TableCell>
-                    <TableCell align="right">{inr(totalCostCbInr)}</TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center">{allocation.businessUnit || "-"}</TableCell>
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>{dailyRateInr(allocation, calculationRates)}</TableCell>
+                    <TableCell align="center">{selectedCurrency}</TableCell>
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>{xFactor ?? "-"}</TableCell>
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>{inr(totalCostCbInr)}</TableCell>
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                       {totalCostCbSelected == null
                         ? "-"
                         : formatContractValue(totalCostCbSelected, selectedCurrency)}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                       {pvSelected == null ? "-" : inr(pvSelected * xFactor)}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                       {pvSelected == null ? "-" : formatContractValue(pvSelected, selectedCurrency)}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                       {profitability == null ? "-" : `${profitability.toFixed(1)}%`}
                     </TableCell>
                   </TableRow>

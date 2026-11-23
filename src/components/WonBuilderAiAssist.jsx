@@ -62,7 +62,7 @@ export default function WonBuilderAiAssist({ form, existing, rateCard, setForm, 
     return d.rows.map((row) => {
       const rawStart = aiContext.months.includes(row.startMonth) ? row.startMonth : projectStart;
       let startMonth = clampToDraftRange(rawStart, projectStart, projectEnd);
-      const rowHasDuration = row.startMonth || row.months != null;
+      const rowHasDuration = Number(row.months) > 0;
       const rawEnd = rowHasDuration
         ? rowEndMonth({ ...row, startMonth: rawStart }) || projectEnd
         : projectEnd;
@@ -84,18 +84,18 @@ export default function WonBuilderAiAssist({ form, existing, rateCard, setForm, 
       ? summarize(draftAllocations(d), rateCard, 0).total
       : null;
 
+  // setForm here is the page's patch-style setter (set(patch)), so pass a plain object.
   const buildFromDraft = (d) =>
-    setForm((prev) => ({
-      ...prev,
+    setForm({
       name: d.name,
       referenceWonNumber: d.referenceWonNumber,
       contractId: d.contractId,
       contractValue: d.contractValue,
       contractValueCurrency: d.contractValueCurrency,
-      startMonth: d.startMonth || prev.startMonth,
-      endMonth: d.endMonth || prev.endMonth,
+      startMonth: d.startMonth || form.startMonth,
+      endMonth: d.endMonth || form.endMonth,
       allocations: draftAllocations(d),
-    }));
+    });
 
   return (
     <AiAssist

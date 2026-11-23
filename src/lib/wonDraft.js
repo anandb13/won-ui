@@ -35,6 +35,7 @@ export function normalizeRows(rows, ctx) {
     const country = countries.has(r.country) ? r.country : "India";
     const count = Math.min(Math.max(Math.round(Number(r.count)) || 1, 1), 100);
     const startMonth = ctx.months?.includes(r.startMonth) ? r.startMonth : "";
+    const monthsGiven = Number(r.months) > 0;
     const months = Math.max(1, Math.ceil(Number(r.months) || 1));
     const base = {
       role: r.role.trim().slice(0, 80),
@@ -42,7 +43,9 @@ export function normalizeRows(rows, ctx) {
       country,
       workLocation: country === "India" && locations.has(r.workLocation) ? r.workLocation : "",
       businessUnit: units.has(r.businessUnit) ? r.businessUnit : "",
-      ...(startMonth ? { startMonth, months } : {}),
+      ...(startMonth ? { startMonth } : {}),
+      // Only keep a duration the user/model actually gave; otherwise the row runs to the WON end.
+      ...(startMonth && monthsGiven ? { months } : {}),
       count: 1,
     };
     return Array.from({ length: count }, () => ({ ...base }));

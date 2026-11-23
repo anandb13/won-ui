@@ -26,7 +26,8 @@ import { isReady, missingInputs, monthCount } from "../lib/wonDraft.js";
 function rowEndMonth(context, row, fallbackEnd) {
   const start = context.months.indexOf(row.startMonth || "");
   if (start < 0) return fallbackEnd || "";
-  const months = Math.max(1, Math.ceil(Number(row.months) || 1));
+  if (!(Number(row.months) > 0)) return fallbackEnd || row.startMonth || "";
+  const months = Math.max(1, Math.ceil(Number(row.months)));
   return context.months[Math.min(context.months.length - 1, start + months - 1)] || fallbackEnd || row.startMonth || "";
 }
 
