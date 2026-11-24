@@ -103,6 +103,13 @@ export function missingInputs(d) {
       label: `Indian work location for: ${noLoc.map((r) => r.role).join(", ")}`,
       required: true,
     });
+  const noBu = d.rows.filter((r) => !r.businessUnit);
+  if (noBu.length)
+    out.push({
+      key: "businessUnit",
+      label: `Business Unit for: ${noBu.map((r) => r.role).join(", ")}`,
+      required: true,
+    });
   for (const f of OPTIONAL_FIELDS) {
     const empty = d[f.key] === "" || d[f.key] == null;
     if (empty && !d.skipped.includes(f.key)) out.push({ ...f, required: false });

@@ -331,7 +331,6 @@ function Builder({ id }) {
     navigate("/won", { replace: true });
   }
 
-  const hasErrors = issues.some((i) => i.level === "error");
   const selectProps = { select: { displayEmpty: true } };
   const projectMonthSlots = monthSlots(calendarBounds.min, calendarBounds.max);
 
@@ -457,133 +456,143 @@ function Builder({ id }) {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {form.allocations.map((a) => (
-                      <TableRow key={a.id}>
-                        <TableCell>
-                          <TextField
-                            fullWidth
-                            value={a.role}
-                            placeholder="e.g. Senior Engineer"
-                            onChange={(e) => setRow(a.id, { role: e.target.value })}
-                            slotProps={{ htmlInput: { "aria-label": `Role for row ${form.allocations.indexOf(a) + 1}` } }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            select
-                            fullWidth
-                            value={a.category}
-                            onChange={(e) => setRow(a.id, { category: e.target.value })}
-                          >
-                            {categories.map((category) => (
-                              <MenuItem key={category.id} value={category.id}>
-                                {category.title}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            select
-                            fullWidth
-                            value={a.country}
-                            onChange={(e) => setRow(a.id, { country: e.target.value, workLocation: "" })}
-                          >
-                            {rateCard.countries.map((country) => (
-                              <MenuItem key={country} value={country}>
-                                {country}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        </TableCell>
-                        <TableCell>
-                          {a.country === "India" && (
+                    {form.allocations.map((a, rowIndex) => {
+                      const rowStart = clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth) || a.startMonth;
+                      const rowEnd = clampMonthToRange(rateCard.calendar, endMonthFor(a, rateCard.calendar), form.startMonth, form.endMonth);
+                      const startIndex = rateCard.calendar.findIndex((month) => month.month === a.startMonth);
+                      const invalidRole = showErrors && !a.role.trim();
+                      const invalidWorkLocation = showErrors && a.country === "India" && !a.workLocation;
+                      const invalidBusinessUnit = showErrors && !a.businessUnit;
+                      const invalidStart = showErrors && rateCard.calendar.length > 0 && !rateCard.calendar.some((month) => month.month === a.startMonth);
+                      const invalidMonths = showErrors && !(Number(a.months) > 0);
+                      const invalidDuration = showErrors && startIndex >= 0 && startIndex + Number(a.months) > rateCard.calendar.length;
+                      const invalidStartOrEnd = invalidStart || invalidMonths || invalidDuration;
+                      return (
+                        <TableRow key={a.id}>
+                          <TableCell>
+                            <TextField
+                              fullWidth
+                              value={a.role}
+                              placeholder="e.g. Senior Engineer"
+                              onChange={(e) => setRow(a.id, { role: e.target.value })}
+                              error={invalidRole}
+                              slotProps={{ htmlInput: { "aria-label": `Role for row ${rowIndex + 1}` } }}
+                            />
+                          </TableCell>
+                          <TableCell>
                             <TextField
                               select
                               fullWidth
-                              value={a.workLocation}
-                              onChange={(e) => setRow(a.id, { workLocation: e.target.value })}
-                              slotProps={{
-                                ...selectProps,
-                                htmlInput: { "aria-label": `Work location for ${a.role || "allocation row"}` },
-                              }}
+                              value={a.category}
+                              onChange={(e) => setRow(a.id, { category: e.target.value })}
                             >
-                              <MenuItem value="">
-                                <em>Choose work location</em>
-                              </MenuItem>
-                              {INDIA_WORK_LOCATIONS.map((location) => (
-                                <MenuItem key={location} value={location}>
-                                  {location}
+                              {categories.map((category) => (
+                                <MenuItem key={category.id} value={category.id}>
+                                  {category.title}
                                 </MenuItem>
                               ))}
                             </TextField>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            select
-                            fullWidth
-                            value={a.businessUnit}
-                            onChange={(e) => setRow(a.id, { businessUnit: e.target.value })}
-                            slotProps={{
-                              ...selectProps,
-                              htmlInput: { "aria-label": `Business Unit for ${a.role || "allocation row"}` },
-                            }}
-                          >
-                            <MenuItem value="">
-                              <em>Select Business Unit</em>
-                            </MenuItem>
-                            {BUSINESS_UNITS.map((businessUnit) => (
-                              <MenuItem key={businessUnit} value={businessUnit}>
-                                {businessUnit}
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              select
+                              fullWidth
+                              value={a.country}
+                              onChange={(e) => setRow(a.id, { country: e.target.value, workLocation: "" })}
+                            >
+                              {rateCard.countries.map((country) => (
+                                <MenuItem key={country} value={country}>
+                                  {country}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          </TableCell>
+                          <TableCell>
+                            {a.country === "India" && (
+                              <TextField
+                                select
+                                fullWidth
+                                value={a.workLocation}
+                                onChange={(e) => setRow(a.id, { workLocation: e.target.value })}
+                                error={invalidWorkLocation}
+                                slotProps={{
+                                  ...selectProps,
+                                  htmlInput: { "aria-label": `Work location for ${a.role || "allocation row"}` },
+                                }}
+                              >
+                                <MenuItem value="">
+                                  <em>Choose work location</em>
+                                </MenuItem>
+                                {INDIA_WORK_LOCATIONS.map((location) => (
+                                  <MenuItem key={location} value={location}>
+                                    {location}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              select
+                              fullWidth
+                              value={a.businessUnit}
+                              onChange={(e) => setRow(a.id, { businessUnit: e.target.value })}
+                              error={invalidBusinessUnit}
+                              slotProps={{
+                                ...selectProps,
+                                htmlInput: { "aria-label": `Business Unit for ${a.role || "allocation row"}` },
+                              }}
+                            >
+                              <MenuItem value="">
+                                <em>Select Business Unit</em>
                               </MenuItem>
-                            ))}
-                          </TextField>
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            type="month"
-                            fullWidth
-                            value={clampMonthToRange(rateCard.calendar, a.startMonth, form.startMonth, form.endMonth) || ""}
-                            onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
-                            slotProps={{
-                              htmlInput: {
-                                min: projectBounds.min,
-                                max: projectBounds.max,
-                                "aria-label": `Start month for ${a.role || "allocation row"}`,
-                              },
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            type="month"
-                            fullWidth
-                            value={
-                              clampMonthToRange(
-                                rateCard.calendar,
-                                endMonthFor(a, rateCard.calendar),
-                                form.startMonth,
-                                form.endMonth
-                              ) || ""
-                            }
-                            onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
-                            slotProps={{
-                              htmlInput: {
-                                min: projectBounds.min,
-                                max: projectBounds.max,
-                                "aria-label": `End month for ${a.role || "allocation row"}`,
-                              },
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ px: 0.5 }}>
-                          <IconButton aria-label="Remove row" title="Remove row" onClick={() => removeRow(a.id)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {BUSINESS_UNITS.map((businessUnit) => (
+                                <MenuItem key={businessUnit} value={businessUnit}>
+                                  {businessUnit}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              type="month"
+                              fullWidth
+                              value={rowStart || ""}
+                              onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
+                              error={invalidStartOrEnd}
+                              slotProps={{
+                                htmlInput: {
+                                  min: projectBounds.min,
+                                  max: projectBounds.max,
+                                  "aria-label": `Start month for ${a.role || "allocation row"}`,
+                                },
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              type="month"
+                              fullWidth
+                              value={rowEnd || ""}
+                              onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
+                              error={invalidStartOrEnd}
+                              slotProps={{
+                                htmlInput: {
+                                  min: projectBounds.min,
+                                  max: projectBounds.max,
+                                  "aria-label": `End month for ${a.role || "allocation row"}`,
+                                },
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ px: 0.5 }}>
+                            <IconButton aria-label="Remove row" title="Remove row" onClick={() => removeRow(a.id)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {form.allocations.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={8} align="center" sx={{ color: "text.secondary", py: 4 }}>
@@ -596,28 +605,11 @@ function Builder({ id }) {
               </TableContainer>
             </Card>
 
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h3" sx={{ mb: 1 }}>
-                Checks
-              </Typography>
-              {issues.length === 0 && (
-                <Typography variant="body2" color="text.secondary">
-                  All checks pass.
-                </Typography>
-              )}
-              <Stack spacing={0.75}>
-                {issues.map((i, idx) => (
-                  <Alert key={idx} severity={i.level === "error" ? "error" : "warning"} variant="outlined" sx={{ py: 0 }}>
-                    {i.text}
-                  </Alert>
-                ))}
-              </Stack>
-              {hasErrors && showErrors && (
-                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                  Fix the errors above before saving.
-                </Typography>
-              )}
-            </Box>
+            {showErrors && form.allocations.length === 0 && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                Add at least one allocation.
+              </Alert>
+            )}
           </CardContent>
         </Card>
 

@@ -78,6 +78,8 @@ export function validate(allocations, pricing, contingencyPct) {
       msgs.push({ level: "error", text: `Row ${i + 1}: months must be above 0.` });
     if (a.country === "India" && !a.workLocation)
       msgs.push({ level: "error", text: `Row ${i + 1}: choose an Indian work location.` });
+    if (!a.businessUnit)
+      msgs.push({ level: "error", text: `Row ${i + 1}: choose a Business Unit.` });
     if (pricing.calendar && !pricing.calendar.some((month) => month.month === a.startMonth))
       msgs.push({ level: "error", text: `Row ${i + 1}: choose a valid start month.` });
     if (pricing.calendar) {
