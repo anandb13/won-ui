@@ -7,7 +7,9 @@ import {
   Card,
   CardContent,
   IconButton,
+  InputAdornment,
   MenuItem,
+  Popover,
   Stack,
   Table,
   TableBody,
@@ -19,6 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useStore } from "../lib/store.jsx";
 import { categoryFor, validate } from "../lib/cost.js";
@@ -26,13 +29,106 @@ import { BUSINESS_UNITS, INDIA_WORK_LOCATIONS } from "../data/reference.js";
 import WonBuilderAiAssist from "../components/WonBuilderAiAssist.jsx";
 import PageHeader from "../ui/PageHeader.jsx";
 
-// slotProps shared by the project start/end month fields.
-const monthSlots = (min, max) => ({
-  inputLabel: { shrink: true },
-  htmlInput: { min, max },
-});
-
 let rowSeq = 0;
+
+function MonthPickerField({ label, value, months, min, max, error, ariaLabel, onChange }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const minIndex = months.findIndex((item) => item.month === min);
+  const maxIndex = months.findIndex((item) => item.month === max);
+  const years = months.reduce((groups, item, index) => {
+    const year = item.month.slice(0, 4);
+    if (!groups[year]) groups[year] = [];
+    groups[year].push({ ...item, index });
+    return groups;
+  }, {});
+
+  return (
+    <>
+      <TextField
+        fullWidth
+        label={label}
+        value={
+          value
+            ? new Date(`${value}-01T00:00:00`).toLocaleDateString("en-IN", {
+                month: "short",
+                year: "numeric",
+              })
+            : ""
+        }
+        placeholder="Select month"
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setAnchorEl(event.currentTarget);
+          }
+        }}
+        error={error}
+        slotProps={{
+          input: {
+            readOnly: true,
+            endAdornment: (
+              <InputAdornment position="end">
+                <CalendarMonthIcon fontSize="small" color={error ? "error" : "action"} />
+              </InputAdornment>
+            ),
+          },
+          htmlInput: {
+            "aria-label": ariaLabel || label,
+            "aria-haspopup": "dialog",
+            "aria-expanded": Boolean(anchorEl),
+          },
+          inputLabel: { shrink: true },
+        }}
+      />
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        PaperProps={{ sx: { p: 2, mt: 0.5, borderRadius: 2, width: 292 } }}
+      >
+        <Stack spacing={1.5} role="dialog" aria-label={`Select ${label.toLowerCase()}`}>
+          {Object.entries(years).map(([year, yearMonths]) => (
+            <Box key={year}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                {year}
+              </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0.75 }}>
+                {yearMonths.map((item) => {
+                  const disabled =
+                    (minIndex >= 0 && item.index < minIndex) ||
+                    (maxIndex >= 0 && item.index > maxIndex);
+                  const monthName = new Date(`${item.month}-01T00:00:00`).toLocaleDateString(
+                    "en",
+                    { month: "short" }
+                  );
+                  return (
+                    <Button
+                      key={item.month}
+                      size="small"
+                      variant={value === item.month ? "contained" : "text"}
+                      disabled={disabled}
+                      aria-pressed={value === item.month}
+                      onClick={() => {
+                        onChange(item.month);
+                        setAnchorEl(null);
+                      }}
+                      sx={{ minWidth: 0, borderRadius: 1.5 }}
+                    >
+                      {monthName}
+                    </Button>
+                  );
+                })}
+              </Box>
+            </Box>
+          ))}
+        </Stack>
+      </Popover>
+    </>
+  );
+}
 
 function monthIndex(calendar, month) {
   return calendar.findIndex((item) => item.month === month);
@@ -334,7 +430,6 @@ function Builder({ id }) {
   }
 
   const selectProps = { select: { displayEmpty: true } };
-  const projectMonthSlots = monthSlots(calendarBounds.min, calendarBounds.max);
 
   return (
     <Box>
@@ -406,19 +501,21 @@ function Builder({ id }) {
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
+              <MonthPickerField
                 label="Start month"
-                type="month"
                 value={form.startMonth || ""}
-                onChange={(e) => setProjectMonth("startMonth", e.target.value)}
-                slotProps={projectMonthSlots}
+                months={rateCard.calendar}
+                min={calendarBounds.min}
+                max={calendarBounds.max}
+                onChange={(month) => setProjectMonth("startMonth", month)}
               />
-              <TextField
+              <MonthPickerField
                 label="End month"
-                type="month"
                 value={form.endMonth || ""}
-                onChange={(e) => setProjectMonth("endMonth", e.target.value)}
-                slotProps={projectMonthSlots}
+                months={rateCard.calendar}
+                min={calendarBounds.min}
+                max={calendarBounds.max}
+                onChange={(month) => setProjectMonth("endMonth", month)}
               />
             </Box>
           </CardContent>
@@ -554,35 +651,27 @@ function Builder({ id }) {
                             </TextField>
                           </TableCell>
                           <TableCell>
-                            <TextField
-                              type="month"
-                              fullWidth
+                            <MonthPickerField
+                              label="Start month"
                               value={rowStart || ""}
-                              onChange={(e) => setAllocationMonth(a.id, "startMonth", e.target.value)}
+                              months={rateCard.calendar}
+                              min={projectBounds.min}
+                              max={projectBounds.max}
+                              onChange={(month) => setAllocationMonth(a.id, "startMonth", month)}
                               error={invalidStartOrEnd}
-                              slotProps={{
-                                htmlInput: {
-                                  min: projectBounds.min,
-                                  max: projectBounds.max,
-                                  "aria-label": `Start month for ${a.role || "allocation row"}`,
-                                },
-                              }}
+                              ariaLabel={`Start month for ${a.role || "allocation row"}`}
                             />
                           </TableCell>
                           <TableCell>
-                            <TextField
-                              type="month"
-                              fullWidth
+                            <MonthPickerField
+                              label="End month"
                               value={rowEnd || ""}
-                              onChange={(e) => setAllocationMonth(a.id, "endMonth", e.target.value)}
+                              months={rateCard.calendar}
+                              min={projectBounds.min}
+                              max={projectBounds.max}
+                              onChange={(month) => setAllocationMonth(a.id, "endMonth", month)}
                               error={invalidStartOrEnd}
-                              slotProps={{
-                                htmlInput: {
-                                  min: projectBounds.min,
-                                  max: projectBounds.max,
-                                  "aria-label": `End month for ${a.role || "allocation row"}`,
-                                },
-                              }}
+                              ariaLabel={`End month for ${a.role || "allocation row"}`}
                             />
                           </TableCell>
                           <TableCell sx={{ px: 0.5 }}>
