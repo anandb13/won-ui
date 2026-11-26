@@ -16,8 +16,31 @@ import {
   TextField,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import { monthLabel } from "../data/reference.js";
 import { useStore } from "../lib/store.jsx";
 import PageHeader from "../ui/PageHeader.jsx";
+
+const currencyLocales = {
+  INR: "en-IN",
+  USD: "en-US",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  GBP: "en-GB",
+};
+
+function formatContractValue(amount, currency) {
+  if (amount === "" || amount == null) return "-";
+  return new Intl.NumberFormat(currencyLocales[currency] || "en-IN", {
+    style: "currency",
+    currency: currency || "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(amount) || 0);
+}
+
+function formatPeriod(startMonth, endMonth) {
+  if (!startMonth || !endMonth) return "-";
+  return `${monthLabel(startMonth)} - ${monthLabel(endMonth)}`;
+}
 
 export default function WonList() {
   const { wons, deleteWon } = useStore();
@@ -67,6 +90,8 @@ export default function WonList() {
                 <TableCell align="right">#</TableCell>
                 <TableCell>Contract ID</TableCell>
                 <TableCell>WON name</TableCell>
+                <TableCell>Contract value</TableCell>
+                <TableCell>Period</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -80,6 +105,8 @@ export default function WonList() {
                       {w.name || w.title}
                     </Link>
                   </TableCell>
+                  <TableCell>{formatContractValue(w.contractValue, w.contractValueCurrency)}</TableCell>
+                  <TableCell>{formatPeriod(w.startMonth, w.endMonth)}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
                       <Button component={RouterLink} to={`/won/${w.id}`} size="small" variant="outlined">
@@ -103,7 +130,7 @@ export default function WonList() {
               ))}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ color: "text.secondary", py: 4 }}>
+                  <TableCell colSpan={6} align="center" sx={{ color: "text.secondary", py: 4 }}>
                     No work orders match.
                   </TableCell>
                 </TableRow>

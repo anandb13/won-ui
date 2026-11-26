@@ -45,7 +45,7 @@ const STARTERS = [
   {
     title: "Cloud Modernization",
     prompt:
-      "Create a WON named Cloud Modernization, from Jul 2027 to Dec 2027. Team: 1 Engagement Manager (CONS, Canada, Cloud), 2 Cloud Architects (ASC, US, Cloud), 3 DevOps Engineers (ITA, India, Pune, Cloud), 3 Developers (ASE, India, Pune, ADM), 1 Developer (ASE, Mexico, ADM), 2 Associate Engineers (TRAINEE, India, Noida, ADM). Skip the contract ID and reference WON number, contract value 250000 USD.",
+      "Create a WON named Cloud Modernization, from Jul 2027 to Dec 2027. Team: 1 Engagement Manager (CONS, Canada, Cloud), 2 Cloud Architects (ASC, US, Cloud), 3 DevOps Engineers (ITA, India, Pune, Cloud), 3 Developers (ASE, India, Pune, ADM), 1 Developer (ASE, Mexico, ADM), 2 Associate Engineers (TRAINEE, India, Noida, ADM). Contract ID C-4802, contract value 250000 USD, skip the reference WON number.",
   },
 ];
 

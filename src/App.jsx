@@ -16,11 +16,9 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import DescriptionIcon from "@mui/icons-material/Description";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import PaidIcon from "@mui/icons-material/Paid";
-import Dashboard from "./pages/Dashboard.jsx";
 import WonList from "./pages/WonList.jsx";
 import WonBuilder from "./pages/WonBuilder.jsx";
 import Calculation from "./pages/Calculation.jsx";
@@ -29,9 +27,8 @@ import RateCard from "./pages/RateCard.jsx";
 const DRAWER_WIDTH = 232;
 
 const NAV = [
-  { to: "/", label: "Dashboard", end: true, icon: DashboardIcon },
-  { to: "/won", label: "Work orders", end: true, icon: DescriptionIcon },
   { to: "/won/new", label: "New WON", icon: AddCircleOutlineIcon },
+  { to: "/won", label: "Work orders", end: true, icon: DescriptionIcon },
   { to: "/rates", label: "Rate card", icon: PaidIcon },
 ];
 
@@ -110,12 +107,12 @@ export default function App() {
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 }, pt: { xs: 10, md: 3 } }}>
         <Container maxWidth="xl" disableGutters>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Navigate to="/won/new" replace />} />
             <Route path="/won" element={<WonList />} />
             <Route path="/won/:id/calculation" element={<Calculation />} />
             <Route path="/won/:id" element={<WonBuilder />} />
             <Route path="/rates" element={<RateCard />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/won/new" replace />} />
           </Routes>
         </Container>
       </Box>

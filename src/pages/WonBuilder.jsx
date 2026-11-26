@@ -318,7 +318,9 @@ function Builder({ id }) {
 
   function onSave() {
     const blocking = issues.filter((i) => i.level === "error");
-    if (!form.name.trim()) {
+    const missingContractId = !String(form.contractId || "").trim();
+    const missingContractValue = form.contractValue === "" || form.contractValue == null;
+    if (!form.name.trim() || missingContractId || missingContractValue) {
       setShowErrors(true);
       return;
     }
@@ -351,12 +353,6 @@ function Builder({ id }) {
         }
       />
 
-      {showErrors && !form.name.trim() && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Enter a WON name.
-        </Alert>
-      )}
-
       <Stack spacing={2.5}>
         <Card>
           <CardContent>
@@ -381,17 +377,21 @@ function Builder({ id }) {
                 placeholder="External reference"
               />
               <TextField
+                required
                 label="Contract ID"
                 value={form.contractId}
                 onChange={(e) => set({ contractId: e.target.value })}
                 placeholder="Contract identifier"
+                error={showErrors && !String(form.contractId || "").trim()}
               />
               <TextField
+                required
                 label="Contract value"
                 type="number"
                 value={form.contractValue}
                 onChange={(e) => set({ contractValue: e.target.value })}
                 placeholder="Contract value"
+                error={showErrors && (form.contractValue === "" || form.contractValue == null)}
                 slotProps={{ htmlInput: { min: 0, step: 1000 } }}
               />
               <TextField

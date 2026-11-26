@@ -15,8 +15,6 @@ export const emptyDraft = () => ({
 });
 
 export const OPTIONAL_FIELDS = [
-  { key: "contractId", label: "Contract ID" },
-  { key: "contractValue", label: "Contract value" },
   { key: "referenceWonNumber", label: "Reference WON number" },
 ];
 
@@ -92,6 +90,9 @@ export function mergePatch(draft, patch, ctx) {
 export function missingInputs(d) {
   const out = [];
   if (!d.name) out.push({ key: "name", label: "WON name", required: true });
+  if (!d.contractId) out.push({ key: "contractId", label: "Contract ID", required: true });
+  if (d.contractValue === "" || d.contractValue == null)
+    out.push({ key: "contractValue", label: "Contract value", required: true });
   if (!d.startMonth || !d.endMonth)
     out.push({ key: "dates", label: "Start and end month", required: true });
   if (d.rows.length === 0)

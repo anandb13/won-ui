@@ -88,11 +88,8 @@ function parseStructuredPrompt(text, ctx) {
     const ref = text.match(/\breference WON(?: number)?\s+([A-Za-z0-9-]+)/i);
     if (ref) patch.referenceWonNumber = ref[1];
   }
-  if (/\bskip\b[^.]*\bcontract ID\b/i.test(text)) skipped.push("contractId");
-  else {
-    const contract = text.match(/\bContract ID\s+([A-Za-z0-9-]+)/i);
-    if (contract) patch.contractId = contract[1];
-  }
+  const contract = text.match(/\bContract ID\s+([A-Za-z0-9-]+)/i);
+  if (contract) patch.contractId = contract[1];
   const value = text.match(/\bcontract value\s+([\d,]+(?:\.\d+)?)\s*([A-Z]{3})\b/i);
   if (value) {
     const amount = Number(String(value[1]).replace(/,/g, ""));

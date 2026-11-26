@@ -280,8 +280,10 @@ export default function Calculation() {
         </TableContainer>
       </Card>
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
-        <Typography variant="h2">Calculation</Typography>
+      <Box sx={{ mb: 1.5 }}>
+        <Typography variant="h2" sx={{ mb: 1.5 }}>
+          Calculation
+        </Typography>
         <ToggleButtonGroup
           exclusive
           size="small"
@@ -293,7 +295,7 @@ export default function Calculation() {
           <ToggleButton value="ultimatix">Ultimatix</ToggleButton>
           <ToggleButton value="rt">RT</ToggleButton>
         </ToggleButtonGroup>
-      </Stack>
+      </Box>
       {belowProfitabilityTarget && (
         <Alert severity="error" sx={{ mb: 2 }}>
           Contract value is below the minimum needed for 50% profitability ({formatContractValue(minimumContractValue, selectedCurrency)}).
@@ -365,9 +367,11 @@ export default function Calculation() {
         </TableContainer>
       </Card>
 
-      <Box component="section" sx={{ mt: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
-          <Typography variant="h2">Milestone split</Typography>
+      <Box component="section" sx={{ mt: 3, mb: 3 }}>
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="h2" sx={{ mb: 1.5 }}>
+            Milestone split
+          </Typography>
           <TextField
             select
             label="Frequency"
@@ -384,7 +388,7 @@ export default function Calculation() {
             <MenuItem value="half-yearly">Half-yearly</MenuItem>
             <MenuItem value="yearly">Yearly</MenuItem>
           </TextField>
-        </Stack>
+        </Box>
         <Card>
           <TableContainer>
             <Table>
